@@ -3,5 +3,6 @@ CREATE TABLE IF NOT EXISTS leads (
   channel     text        NOT NULL,
   raw_text    text        NOT NULL,
   status      text        NOT NULL DEFAULT 'new',
+  extracted   jsonb,
   received_at timestamptz NOT NULL DEFAULT now()
 );

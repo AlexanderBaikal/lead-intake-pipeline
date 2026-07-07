@@ -2,15 +2,18 @@ import express from "express";
 
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { extract } from "./extract.js";
 
 const app = express();
 app.use(express.json());
 
 app.post("/v1/leads", async (req, res) => {
   const { channel, text } = req.body;
+  const extracted = extract(text);
   const { rows } = await pool.query(
-    `INSERT INTO leads (channel, raw_text) VALUES ($1, $2) RETURNING id, status`,
-    [channel, text],
+    `INSERT INTO leads (channel, raw_text, extracted, status)
+          VALUES ($1, $2, $3, 'done') RETURNING id, status, extracted`,
+    [channel, text, JSON.stringify(extracted)],
   );
   res.status(201).json(rows[0]);
 });

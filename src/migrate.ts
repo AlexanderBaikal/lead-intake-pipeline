@@ -3,10 +3,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { pool } from "./db.js";
+import { log } from "./logger.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 const sql = await readFile(join(here, "..", "db", "schema.sql"), "utf8");
 await pool.query(sql);
-console.log("schema applied");
+log.info("schema applied");
 await pool.end();

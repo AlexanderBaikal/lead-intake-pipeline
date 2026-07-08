@@ -1,4 +1,5 @@
 import { pool } from "./db.js";
+import { log } from "./logger.js";
 import { processLead } from "./pipeline.js";
 import { claimJob, completeJob, failJob } from "./queue.js";
 
@@ -6,7 +7,7 @@ const IDLE_SLEEP_MS = 500;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-console.log("worker started");
+log.info("worker started");
 
 for (;;) {
   const job = await claimJob();
@@ -18,10 +19,13 @@ for (;;) {
   try {
     await processLead(job.lead_id);
     await completeJob(job.id);
-    console.log(`lead ${job.lead_id} done`);
+    log.info("lead processed", { leadId: job.lead_id });
   } catch (error) {
     await failJob(job.id);
-    console.error(`lead ${job.lead_id} failed`, error);
+    log.error("lead failed", {
+      leadId: job.lead_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

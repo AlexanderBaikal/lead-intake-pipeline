@@ -2,6 +2,7 @@ import express from "express";
 
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { log } from "./logger.js";
 import { enqueue } from "./queue.js";
 
 const app = express();
@@ -40,5 +41,5 @@ app.get("/health", async (_req, res) => {
 });
 
 app.listen(config.port, () => {
-  console.log(`listening on ${config.port}`);
+  log.info("intake listening", { port: config.port });
 });

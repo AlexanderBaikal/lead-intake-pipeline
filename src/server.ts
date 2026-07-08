@@ -8,7 +8,12 @@ const app = express();
 app.use(express.json());
 
 app.post("/v1/leads", async (req, res) => {
-  const { channel, text } = req.body;
+  const { channel, text } = req.body ?? {};
+  if (typeof channel !== "string" || typeof text !== "string" || text.length === 0) {
+    res.status(400).json({ error: "channel and text are required" });
+    return;
+  }
+
   const extracted = extract(text);
   const { rows } = await pool.query(
     `INSERT INTO leads (channel, raw_text, extracted, status)

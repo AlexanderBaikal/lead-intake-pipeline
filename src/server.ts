@@ -2,7 +2,7 @@ import express from "express";
 
 import { config } from "./config.js";
 import { pool } from "./db.js";
-import { extract } from "./extract.js";
+import { enqueue } from "./queue.js";
 
 const app = express();
 app.use(express.json());
@@ -14,13 +14,13 @@ app.post("/v1/leads", async (req, res) => {
     return;
   }
 
-  const extracted = extract(text);
   const { rows } = await pool.query(
-    `INSERT INTO leads (channel, raw_text, extracted, status)
-          VALUES ($1, $2, $3, 'done') RETURNING id, status, extracted`,
-    [channel, text, JSON.stringify(extracted)],
+    `INSERT INTO leads (channel, raw_text) VALUES ($1, $2) RETURNING id, status`,
+    [channel, text],
   );
-  res.status(201).json(rows[0]);
+
+  await enqueue(rows[0].id);
+  res.status(202).json(rows[0]);
 });
 
 app.get("/v1/leads/:id", async (req, res) => {

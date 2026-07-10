@@ -25,14 +25,18 @@ app.post("/v1/leads", async (req, res) => {
 });
 
 app.get("/v1/leads/:id", async (req, res) => {
-  const { rows } = await pool.query(`SELECT * FROM leads WHERE id = $1`, [
-    req.params.id,
-  ]);
-  if (rows.length === 0) {
+  const lead = await pool.query(`SELECT * FROM leads WHERE id = $1`, [req.params.id]);
+  if (lead.rowCount === 0) {
     res.status(404).json({ error: "not_found" });
     return;
   }
-  res.json(rows[0]);
+
+  const steps = await pool.query(
+    `SELECT name, ok, detail, ms, created_at FROM steps WHERE lead_id = $1 ORDER BY id`,
+    [req.params.id],
+  );
+
+  res.json({ ...lead.rows[0], steps: steps.rows });
 });
 
 app.get("/health", async (_req, res) => {

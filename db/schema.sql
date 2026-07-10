@@ -18,3 +18,14 @@ CREATE TABLE IF NOT EXISTS jobs (
   last_error  text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+
+-- One row per pipeline step, so a lead that went wrong says where.
+CREATE TABLE IF NOT EXISTS steps (
+  id         bigserial PRIMARY KEY,
+  lead_id    bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  name       text        NOT NULL,
+  ok         boolean     NOT NULL,
+  detail     text,
+  ms         int         NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

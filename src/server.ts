@@ -4,20 +4,23 @@ import { config } from "./config.js";
 import { pool } from "./db.js";
 import { log } from "./logger.js";
 import { enqueue } from "./queue.js";
+import { LeadInput } from "./schema.js";
 
 const app = express();
 app.use(express.json());
 
 app.post("/v1/leads", async (req, res) => {
-  const { channel, text } = req.body ?? {};
-  if (typeof channel !== "string" || typeof text !== "string" || text.length === 0) {
-    res.status(400).json({ error: "channel and text are required" });
+  const parsed = LeadInput.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_request", detail: parsed.error.issues });
     return;
   }
+  const input = parsed.data;
 
   const { rows } = await pool.query(
-    `INSERT INTO leads (channel, raw_text) VALUES ($1, $2) RETURNING id, status`,
-    [channel, text],
+    `INSERT INTO leads (channel, raw_text, contact_hint) VALUES ($1, $2, $3)
+       RETURNING id, status`,
+    [input.channel, input.text, input.contact ?? null],
   );
 
   await enqueue(rows[0].id);

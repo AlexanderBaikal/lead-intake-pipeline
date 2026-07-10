@@ -25,17 +25,21 @@ async function step<T>(
 }
 
 export async function processLead(leadId: number): Promise<void> {
-  const { rows } = await pool.query<{ raw_text: string; received_at: Date }>(
-    `SELECT raw_text, received_at FROM leads WHERE id = $1`,
-    [leadId],
-  );
+  const { rows } = await pool.query<{
+    raw_text: string;
+    contact_hint: string | null;
+    received_at: Date;
+  }>(`SELECT raw_text, contact_hint, received_at FROM leads WHERE id = $1`, [leadId]);
   const lead = rows[0];
   if (!lead) throw new Error(`lead ${leadId} vanished before processing`);
 
   await pool.query(`UPDATE leads SET status = 'processing' WHERE id = $1`, [leadId]);
 
   const extracted = await step(leadId, "extract", async () => {
-    const result = extract(lead.raw_text, lead.received_at);
+    const result = extract(lead.raw_text, {
+      referenceDate: lead.received_at,
+      contactHint: lead.contact_hint,
+    });
     return { result, detail: `service=${result.service}` };
   });
 

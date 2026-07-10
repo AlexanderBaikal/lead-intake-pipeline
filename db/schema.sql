@@ -9,8 +9,12 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
-  id         bigserial PRIMARY KEY,
-  lead_id    bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  status     text        NOT NULL DEFAULT 'queued',
-  created_at timestamptz NOT NULL DEFAULT now()
+  id          bigserial PRIMARY KEY,
+  lead_id     bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  status      text        NOT NULL DEFAULT 'queued',
+  attempts    int         NOT NULL DEFAULT 0,
+  max_attempts int        NOT NULL DEFAULT 5,
+  run_after   timestamptz NOT NULL DEFAULT now(),
+  last_error  text,
+  created_at  timestamptz NOT NULL DEFAULT now()
 );

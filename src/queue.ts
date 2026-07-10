@@ -3,6 +3,8 @@ import { pool } from "./db.js";
 export interface Job {
   id: number;
   lead_id: number;
+  attempts: number;
+  max_attempts: number;
 }
 
 export async function enqueue(leadId: number): Promise<void> {
@@ -19,15 +21,16 @@ export async function enqueue(leadId: number): Promise<void> {
 export async function claimJob(): Promise<Job | null> {
   const { rows } = await pool.query<Job>(
     `UPDATE jobs
-        SET status = 'running'
+        SET status = 'running',
+            attempts = attempts + 1
       WHERE id = (
         SELECT id FROM jobs
-         WHERE status = 'queued'
-         ORDER BY id
+         WHERE status = 'queued' AND run_after <= now()
+         ORDER BY run_after
          FOR UPDATE SKIP LOCKED
          LIMIT 1
       )
-      RETURNING id, lead_id`,
+      RETURNING id, lead_id, attempts, max_attempts`,
   );
   return rows[0] ?? null;
 }
@@ -36,6 +39,23 @@ export async function completeJob(jobId: number): Promise<void> {
   await pool.query(`UPDATE jobs SET status = 'done' WHERE id = $1`, [jobId]);
 }
 
-export async function failJob(jobId: number): Promise<void> {
-  await pool.query(`UPDATE jobs SET status = 'failed' WHERE id = $1`, [jobId]);
+/** Exponential backoff, capped — 2s, 4s, 8s, 16s, then dead. */
+export async function failJob(job: Job, error: unknown): Promise<"retry" | "dead"> {
+  const message = error instanceof Error ? error.message : String(error);
+  const exhausted = job.attempts >= job.max_attempts;
+  const delaySeconds = Math.min(2 ** job.attempts, 300);
+
+  await pool.query(
+    `UPDATE jobs
+        SET status = $2,
+            last_error = $3,
+            run_after = now() + make_interval(secs => $4)
+      WHERE id = $1`,
+    [job.id, exhausted ? "dead" : "queued", message.slice(0, 2_000), delaySeconds],
+  );
+
+  if (exhausted) {
+    await pool.query(`UPDATE leads SET status = 'failed' WHERE id = $1`, [job.lead_id]);
+  }
+  return exhausted ? "dead" : "retry";
 }

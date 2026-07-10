@@ -21,9 +21,11 @@ for (;;) {
     await completeJob(job.id);
     log.info("lead processed", { leadId: job.lead_id });
   } catch (error) {
-    await failJob(job.id);
+    const outcome = await failJob(job, error);
     log.error("lead failed", {
       leadId: job.lead_id,
+      attempt: job.attempts,
+      outcome,
       error: error instanceof Error ? error.message : String(error),
     });
   }

@@ -9,15 +9,27 @@ export async function enqueue(leadId: number): Promise<void> {
   await pool.query(`INSERT INTO jobs (lead_id) VALUES ($1)`, [leadId]);
 }
 
+/**
+ * Claim one job atomically. SELECT-then-UPDATE handed the same row to both
+ * workers; the UPDATE has to be the thing that picks the row.
+ *
+ * SKIP LOCKED is what makes the second worker worth starting: without it it
+ * blocks on the row the first one holds instead of taking the next one.
+ */
 export async function claimJob(): Promise<Job | null> {
   const { rows } = await pool.query<Job>(
-    `SELECT id, lead_id FROM jobs WHERE status = 'queued' ORDER BY id LIMIT 1`,
+    `UPDATE jobs
+        SET status = 'running'
+      WHERE id = (
+        SELECT id FROM jobs
+         WHERE status = 'queued'
+         ORDER BY id
+         FOR UPDATE SKIP LOCKED
+         LIMIT 1
+      )
+      RETURNING id, lead_id`,
   );
-  const job = rows[0];
-  if (!job) return null;
-
-  await pool.query(`UPDATE jobs SET status = 'running' WHERE id = $1`, [job.id]);
-  return job;
+  return rows[0] ?? null;
 }
 
 export async function completeJob(jobId: number): Promise<void> {

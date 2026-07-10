@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- The index the claim query rides. Partial, so it stays small as done rows pile up.
+CREATE INDEX IF NOT EXISTS jobs_claimable_idx
+  ON jobs (run_after)
+  WHERE status = 'queued';
+
 -- One row per pipeline step, so a lead that went wrong says where.
 CREATE TABLE IF NOT EXISTS steps (
   id         bigserial PRIMARY KEY,
@@ -29,3 +34,5 @@ CREATE TABLE IF NOT EXISTS steps (
   ms         int         NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS steps_lead_idx ON steps (lead_id, id);

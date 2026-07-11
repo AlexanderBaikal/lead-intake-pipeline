@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { extract } from "../src/extract.js";
+import { extract } from "../src/llm/mock.js";
 import { ExtractedLead } from "../src/schema.js";
 
 const REF = new Date("2026-04-11T12:00:00Z"); // a Saturday

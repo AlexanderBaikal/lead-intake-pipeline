@@ -1,4 +1,4 @@
-import type { ExtractedLead } from "./schema.js";
+import type { ExtractedLead } from "../schema.js";
 
 /**
  * Rule-based extraction. Good enough to be useful, nowhere near good enough

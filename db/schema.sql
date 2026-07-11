@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS leads (
   contact_hint text,
   status       text        NOT NULL DEFAULT 'queued',
   extracted    jsonb,
+  extraction_source text,
   received_at  timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz
 );

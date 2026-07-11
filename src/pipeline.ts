@@ -1,5 +1,5 @@
 import { pool } from "./db.js";
-import { extract } from "./extract.js";
+import { getProvider } from "./llm/index.js";
 
 async function step<T>(
   leadId: number,
@@ -35,18 +35,22 @@ export async function processLead(leadId: number): Promise<void> {
 
   await pool.query(`UPDATE leads SET status = 'processing' WHERE id = $1`, [leadId]);
 
-  const extracted = await step(leadId, "extract", async () => {
-    const result = extract(lead.raw_text, {
-      referenceDate: lead.received_at,
+  const { extracted, source } = await step(leadId, "extract", async () => {
+    const outcome = await getProvider().extract({
+      text: lead.raw_text,
       contactHint: lead.contact_hint,
+      referenceDate: lead.received_at,
     });
-    return { result, detail: `service=${result.service}` };
+    return {
+      result: { extracted: outcome.lead, source: outcome.source },
+      detail: `${outcome.source} · ${outcome.inputTokens} in / ${outcome.outputTokens} out`,
+    };
   });
 
   await pool.query(
     `UPDATE leads
-        SET extracted = $2, status = 'done', completed_at = now()
+        SET extracted = $2, extraction_source = $3, status = 'done', completed_at = now()
       WHERE id = $1`,
-    [leadId, JSON.stringify(extracted)],
+    [leadId, JSON.stringify(extracted), source],
   );
 }

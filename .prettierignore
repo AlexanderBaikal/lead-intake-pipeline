@@ -1,0 +1,5 @@
+node_modules
+package-lock.json
+
+# Prose is wrapped by hand. Markdown is reviewed, not formatted.
+*.md

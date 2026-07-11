@@ -14,7 +14,7 @@ const SERVICE_PATTERNS: ReadonlyArray<[RegExp, ExtractedLead["service"]]> = [
   [/\b(detailing|pulido|encerado|wax|polish|ceramic)\b/i, "detailing"],
   [/\b(reparar|arreglar|repair|fix|dent|scratch)\b/i, "repair"],
   [/\b(revisar|inspeccion|inspección|inspection|check-?up)\b/i, "inspection"],
-  [/\b(suscripcion|suscripción|subscription|mensual|monthly plan)\b/i, "subscription"]
+  [/\b(suscripcion|suscripción|subscription|mensual|monthly plan)\b/i, "subscription"],
 ];
 
 const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
@@ -22,7 +22,7 @@ const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
   [/\b(suv|4x4|jeep)\b/i, "suv"],
   [/\b(sedan|sedán|carro|coche|auto|car)\b/i, "sedan"],
   [/\b(van|minivan|buseta)\b/i, "van"],
-  [/\b(moto|motorcycle|bike)\b/i, "motorcycle"]
+  [/\b(moto|motorcycle|bike)\b/i, "motorcycle"],
 ];
 
 const COUNTABLE =
@@ -105,7 +105,10 @@ function detectContact(text: string): string | null {
 }
 
 function detectName(text: string): string | null {
-  const m = /\b(?:me llamo|mi nombre es|soy|my name is|this is|i am|i'm)\s+(\w+(?:\s+\w+)?)/i.exec(text);
+  const m =
+    /\b(?:me llamo|mi nombre es|soy|my name is|this is|i am|i'm)\s+(\w+(?:\s+\w+)?)/i.exec(
+      text,
+    );
   return m ? m[1].trim() : null;
 }
 
@@ -131,11 +134,15 @@ export function extract(text: string, options: ExtractOptions = {}): ExtractedLe
   }
 
   const urgency: ExtractedLead["urgency"] =
-    /\b(urgente|urgent|asap|ya mismo|right now|ahora mismo|lo antes posible)\b/i.test(text)
+    /\b(urgente|urgent|asap|ya mismo|right now|ahora mismo|lo antes posible)\b/i.test(
+      text,
+    )
       ? "asap"
       : /\b(hoy|today|esta tarde|this afternoon)\b/i.test(text)
         ? "today"
-        : /\b(esta semana|this week|ma[nñ]ana|tomorrow|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|monday|tuesday|wednesday|thursday|friday|saturday)\b/i.test(text)
+        : /\b(esta semana|this week|ma[nñ]ana|tomorrow|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|monday|tuesday|wednesday|thursday|friday|saturday)\b/i.test(
+              text,
+            )
           ? "this_week"
           : "flexible";
 
@@ -148,6 +155,6 @@ export function extract(text: string, options: ExtractOptions = {}): ExtractedLe
     requested_date: detectDate(text, reference),
     urgency,
     language: ES_MARKERS.test(text) ? "es" : "en",
-    notes: text.replace(/\s+/g, " ").trim().slice(0, 280)
+    notes: text.replace(/\s+/g, " ").trim().slice(0, 280),
   };
 }

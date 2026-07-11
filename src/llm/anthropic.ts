@@ -34,6 +34,15 @@ function userPrompt(request: ExtractRequest): string {
     .join("\n");
 }
 
+/**
+ * Asking for "JSON only" gets a ```json fence back roughly a third of the
+ * time. Strip it rather than lose a lead over a formatting habit.
+ */
+function stripFence(text: string): string {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text.trim());
+  return (fenced ? fenced[1] : text).trim();
+}
+
 export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
 
@@ -52,7 +61,7 @@ export class AnthropicProvider implements LlmProvider {
       .join("");
 
     return {
-      lead: ExtractedLead.parse(JSON.parse(text)),
+      lead: ExtractedLead.parse(JSON.parse(stripFence(text))),
       source: "model",
       model: config.llmModel,
       inputTokens: response.usage.input_tokens,

@@ -23,23 +23,27 @@ app.post("/v1/leads", async (req, res) => {
     return;
   }
 
-  const existing = await pool.query(
-    `SELECT id, status FROM leads WHERE idempotency_key = $1`,
-    [key],
+  // Let the unique index decide. Checking first and inserting after leaves a
+  // window where both deliveries find nothing and both insert.
+  const inserted = await pool.query<{ id: number; status: string }>(
+    `INSERT INTO leads (idempotency_key, channel, raw_text, contact_hint)
+          VALUES ($1, $2, $3, $4)
+     ON CONFLICT (idempotency_key) DO NOTHING
+       RETURNING id, status`,
+    [key, input.channel, input.text, input.contact ?? null],
   );
-  if ((existing.rowCount ?? 0) > 0) {
+
+  if (inserted.rowCount === 0) {
+    const existing = await pool.query(
+      `SELECT id, status FROM leads WHERE idempotency_key = $1`,
+      [key],
+    );
     res.status(200).json({ ...existing.rows[0], duplicate: true });
     return;
   }
 
-  const { rows } = await pool.query(
-    `INSERT INTO leads (idempotency_key, channel, raw_text, contact_hint)
-          VALUES ($1, $2, $3, $4) RETURNING id, status`,
-    [key, input.channel, input.text, input.contact ?? null],
-  );
-
-  await enqueue(rows[0].id);
-  res.status(202).json({ ...rows[0], duplicate: false });
+  await enqueue(inserted.rows[0].id);
+  res.status(202).json({ ...inserted.rows[0], duplicate: false });
 });
 
 app.get("/v1/leads/:id", async (req, res) => {

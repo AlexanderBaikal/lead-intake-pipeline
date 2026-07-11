@@ -1,5 +1,8 @@
 CREATE TABLE IF NOT EXISTS leads (
   id           bigserial PRIMARY KEY,
+  -- The dedup key. A webhook that fires twice carries the same one, so the
+  -- second insert collides here instead of creating a second lead.
+  idempotency_key text     NOT NULL UNIQUE,
   channel      text        NOT NULL,
   raw_text     text        NOT NULL,
   contact_hint text,

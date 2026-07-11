@@ -17,14 +17,29 @@ app.post("/v1/leads", async (req, res) => {
   }
   const input = parsed.data;
 
+  const key = req.header("Idempotency-Key");
+  if (!key) {
+    res.status(400).json({ error: "idempotency_key_required" });
+    return;
+  }
+
+  const existing = await pool.query(
+    `SELECT id, status FROM leads WHERE idempotency_key = $1`,
+    [key],
+  );
+  if ((existing.rowCount ?? 0) > 0) {
+    res.status(200).json({ ...existing.rows[0], duplicate: true });
+    return;
+  }
+
   const { rows } = await pool.query(
-    `INSERT INTO leads (channel, raw_text, contact_hint) VALUES ($1, $2, $3)
-       RETURNING id, status`,
-    [input.channel, input.text, input.contact ?? null],
+    `INSERT INTO leads (idempotency_key, channel, raw_text, contact_hint)
+          VALUES ($1, $2, $3, $4) RETURNING id, status`,
+    [key, input.channel, input.text, input.contact ?? null],
   );
 
   await enqueue(rows[0].id);
-  res.status(202).json(rows[0]);
+  res.status(202).json({ ...rows[0], duplicate: false });
 });
 
 app.get("/v1/leads/:id", async (req, res) => {

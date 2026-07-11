@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { config } from "../config.js";
 import { ExtractedLead } from "../schema.js";
+import { extract } from "./mock.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
 const MAX_OUTPUT_TOKENS = 1_024;
@@ -41,12 +42,31 @@ export class AnthropicProvider implements LlmProvider {
       messages: [{ role: "user", content: userPrompt(request) }],
     });
 
-    return {
-      lead: response.parsed_output!,
-      source: "model",
-      model: config.llmModel,
+    const usage = {
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
+    };
+
+    // Two ways a structurally-valid request still yields no usable object:
+    // the model declined, or it hit the token cap mid-object. Neither is worth
+    // failing the lead over — parse it with the rules and mark the row.
+    if (response.stop_reason === "refusal" || response.parsed_output === null) {
+      return {
+        lead: extract(request.text, {
+          referenceDate: request.referenceDate,
+          contactHint: request.contactHint,
+        }),
+        source: "heuristic",
+        model: config.llmModel,
+        ...usage,
+      };
+    }
+
+    return {
+      lead: response.parsed_output,
+      source: "model",
+      model: config.llmModel,
+      ...usage,
     };
   }
 }

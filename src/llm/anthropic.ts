@@ -16,6 +16,11 @@ const SYSTEM = [
   "Resolve relative dates ('mañana', 'next Friday') against the reference date given in the message.",
 ].join(" ");
 
+/**
+ * The prompt is assembled stable-part-first so the system block and the
+ * instructions stay byte-identical across leads. Only the tail varies, which
+ * is what makes the cached prefix reusable at ~0.1x input price.
+ */
 function userPrompt(request: ExtractRequest): string {
   const reference = request.referenceDate.toISOString().slice(0, 10);
   return [
@@ -37,8 +42,13 @@ export class AnthropicProvider implements LlmProvider {
     const response = await this.client.messages.parse({
       model: config.llmModel,
       max_tokens: MAX_OUTPUT_TOKENS,
-      system: SYSTEM,
-      output_config: { format: zodOutputFormat(ExtractedLead) },
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+      // Extraction is a shallow task; the depth this buys goes to parsing
+      // sloppy input, not to reasoning about it.
+      output_config: {
+        effort: "low",
+        format: zodOutputFormat(ExtractedLead),
+      },
       messages: [{ role: "user", content: userPrompt(request) }],
     });
 

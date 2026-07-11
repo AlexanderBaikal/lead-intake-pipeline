@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { config } from "../config.js";
 import { ExtractedLead } from "../schema.js";
@@ -12,14 +13,6 @@ const SYSTEM = [
   "Extract only what the text actually says. Leave a field null rather than guessing it:",
   "an unfilled field costs a human ten seconds, an invented one costs a wrong appointment.",
   "Resolve relative dates ('mañana', 'next Friday') against the reference date given in the message.",
-  "",
-  "Reply with JSON only, no prose, matching exactly:",
-  '{"customer_name": string|null, "contact": string|null,',
-  '"service": "wash"|"detailing"|"repair"|"inspection"|"subscription"|"other",',
-  '"vehicle_count": number, "vehicle_types": string[],',
-  '"requested_date": "YYYY-MM-DD"|null,',
-  '"urgency": "asap"|"today"|"this_week"|"flexible",',
-  '"language": "es"|"en"|"other", "notes": string}',
 ].join(" ");
 
 function userPrompt(request: ExtractRequest): string {
@@ -34,34 +27,22 @@ function userPrompt(request: ExtractRequest): string {
     .join("\n");
 }
 
-/**
- * Asking for "JSON only" gets a ```json fence back roughly a third of the
- * time. Strip it rather than lose a lead over a formatting habit.
- */
-function stripFence(text: string): string {
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text.trim());
-  return (fenced ? fenced[1] : text).trim();
-}
-
 export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
 
   private readonly client = new Anthropic({ apiKey: config.anthropicApiKey });
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
-    const response = await this.client.messages.create({
+    const response = await this.client.messages.parse({
       model: config.llmModel,
       max_tokens: MAX_OUTPUT_TOKENS,
       system: SYSTEM,
+      output_config: { format: zodOutputFormat(ExtractedLead) },
       messages: [{ role: "user", content: userPrompt(request) }],
     });
 
-    const text = response.content
-      .map((block) => (block.type === "text" ? block.text : ""))
-      .join("");
-
     return {
-      lead: ExtractedLead.parse(JSON.parse(stripFence(text))),
+      lead: response.parsed_output!,
       source: "model",
       model: config.llmModel,
       inputTokens: response.usage.input_tokens,

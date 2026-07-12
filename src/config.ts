@@ -6,4 +6,6 @@ export const config = {
   llmProvider: (process.env.LLM_PROVIDER ?? "mock") as "mock" | "anthropic",
   llmModel: process.env.LLM_MODEL ?? "claude-opus-5",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+
+  budgetCeilingUsd: Number(process.env.BUDGET_CEILING_USD ?? 5),
 };

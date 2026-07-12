@@ -8,6 +8,13 @@ export type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 /** Runs the rule-based extractor, so the repo works with no API key in sight. */
 class MockProvider implements LlmProvider {
   readonly name = "mock";
+  readonly metered = false;
+  readonly maxOutputTokens = 0;
+
+  async estimateInputTokens(request: ExtractRequest): Promise<number> {
+    // Rough enough for a provider that costs nothing; the real one counts.
+    return Math.ceil(request.text.length / 4);
+  }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     return {

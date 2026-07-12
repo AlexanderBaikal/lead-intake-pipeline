@@ -1,3 +1,4 @@
+import { config } from "./config.js";
 import { pool } from "./db.js";
 
 /** Published list prices, USD per million tokens. */
@@ -39,4 +40,23 @@ export async function recordCall(params: {
     [params.leadId, params.model, params.inputTokens, params.outputTokens, cost],
   );
   return cost;
+}
+
+/**
+ * Gate a call *before* it happens, using the counted input tokens plus the
+ * worst case output (max_tokens). Checking afterwards would only tell us how
+ * far over we already are.
+ */
+export async function canAfford(
+  model: string,
+  estimatedInputTokens: number,
+  maxOutputTokens: number,
+): Promise<{ allowed: boolean; spentUsd: number; ceilingUsd: number }> {
+  const spentUsd = await currentSpendUsd();
+  const worstCase = costUsd(model, estimatedInputTokens, maxOutputTokens);
+  return {
+    allowed: spentUsd + worstCase <= config.budgetCeilingUsd,
+    spentUsd,
+    ceilingUsd: config.budgetCeilingUsd,
+  };
 }

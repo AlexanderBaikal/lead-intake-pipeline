@@ -18,5 +18,22 @@ export interface ExtractResult {
 
 export interface LlmProvider {
   readonly name: string;
+
+  /**
+   * Whether calls cost money. The pipeline gates on this rather than on the
+   * provider's name, so adding a provider never means editing the pipeline.
+   */
+  readonly metered: boolean;
+
+  /**
+   * The cap this provider passes as `max_tokens`. The budget gate prices the
+   * worst case against it, so the two cannot drift into a ceiling that is
+   * enforced against a number the call never actually used.
+   */
+  readonly maxOutputTokens: number;
+
   extract(request: ExtractRequest): Promise<ExtractResult>;
+
+  /** Priced ahead of the call, so the budget gate can refuse before spending. */
+  estimateInputTokens(request: ExtractRequest): Promise<number>;
 }

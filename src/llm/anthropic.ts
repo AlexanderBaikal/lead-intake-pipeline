@@ -6,6 +6,11 @@ import { ExtractedLead } from "../schema.js";
 import { extract } from "./mock.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
+/**
+ * The response cap. The budget gate prices every call against this same number
+ * as its worst case, so the ceiling is enforced against what the call can
+ * actually spend rather than against a second literal that drifted from it.
+ */
 const MAX_OUTPUT_TOKENS = 1_024;
 
 const SYSTEM = [
@@ -35,8 +40,19 @@ function userPrompt(request: ExtractRequest): string {
 
 export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
+  readonly metered = true;
+  readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
 
   private readonly client = new Anthropic({ apiKey: config.anthropicApiKey });
+
+  async estimateInputTokens(request: ExtractRequest): Promise<number> {
+    const counted = await this.client.messages.countTokens({
+      model: config.llmModel,
+      system: SYSTEM,
+      messages: [{ role: "user", content: userPrompt(request) }],
+    });
+    return counted.input_tokens;
+  }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const response = await this.client.messages.parse({

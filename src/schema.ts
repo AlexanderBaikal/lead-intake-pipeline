@@ -11,6 +11,9 @@ export const SERVICES = [
 
 export const URGENCIES = ["asap", "today", "this_week", "flexible"] as const;
 
+/** Caller-supplied dedup key. */
+export const IdempotencyKey = z.string().min(8).max(200);
+
 /** What a channel adapter posts to the intake endpoint. */
 export const LeadInput = z.object({
   channel: z.enum(["web_form", "whatsapp", "email", "instagram"]),
@@ -18,6 +21,8 @@ export const LeadInput = z.object({
   text: z.string().min(1).max(8_000),
   /** Phone or email, when the channel already knows it. */
   contact: z.string().max(200).optional(),
+  /** Optional: absent, the server derives one from (channel, contact, text). */
+  idempotency_key: IdempotencyKey.optional(),
 });
 export type LeadInput = z.infer<typeof LeadInput>;
 

@@ -23,27 +23,36 @@ app.post("/v1/leads", async (req, res) => {
     return;
   }
 
-  // Let the unique index decide. Checking first and inserting after leaves a
-  // window where both deliveries find nothing and both insert.
-  const inserted = await pool.query<{ id: number; status: string }>(
+  // The insert is the dedup: the unique index decides, not a prior SELECT, so
+  // two concurrent deliveries of the same webhook cannot both win.
+  //
+  // DO UPDATE rather than DO NOTHING, and the no-op assignment, are both load
+  // bearing. DO NOTHING returns no row on conflict, and a plain SELECT beside
+  // it reads the statement's snapshot — so a delivery that lands while a
+  // competing transaction is still open finds neither, and the caller gets a
+  // 500 for the exact race this is meant to absorb. DO UPDATE waits for that
+  // transaction instead and always returns the surviving row.
+  //
+  // `xmax = 0` is true only for a row this statement inserted, which is what
+  // separates a fresh lead from a duplicate without a second query.
+  const { rows } = await pool.query<{ id: number; status: string; inserted: boolean }>(
     `INSERT INTO leads (idempotency_key, channel, raw_text, contact_hint)
           VALUES ($1, $2, $3, $4)
-     ON CONFLICT (idempotency_key) DO NOTHING
-       RETURNING id, status`,
+     ON CONFLICT (idempotency_key)
+     DO UPDATE SET idempotency_key = leads.idempotency_key
+       RETURNING id, status, (xmax = 0) AS inserted`,
     [key, input.channel, input.text, input.contact ?? null],
   );
 
-  if (inserted.rowCount === 0) {
-    const existing = await pool.query(
-      `SELECT id, status FROM leads WHERE idempotency_key = $1`,
-      [key],
-    );
-    res.status(200).json({ ...existing.rows[0], duplicate: true });
+  const lead = rows[0];
+
+  if (lead.inserted) {
+    await enqueue(lead.id);
+    res.status(202).json({ id: lead.id, status: lead.status, duplicate: false });
     return;
   }
 
-  await enqueue(inserted.rows[0].id);
-  res.status(202).json({ ...inserted.rows[0], duplicate: false });
+  res.status(200).json({ id: lead.id, status: lead.status, duplicate: true });
 });
 
 app.get("/v1/leads/:id", async (req, res) => {

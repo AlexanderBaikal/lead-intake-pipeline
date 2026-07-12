@@ -11,7 +11,12 @@ export const SERVICES = [
 
 export const URGENCIES = ["asap", "today", "this_week", "flexible"] as const;
 
-/** Caller-supplied dedup key. */
+/**
+ * Caller-supplied dedup key. One definition because it arrives two ways — as
+ * this field or as the `Idempotency-Key` header — and a header held to looser
+ * rules than the field is how an empty string becomes a valid key that every
+ * request shares.
+ */
 export const IdempotencyKey = z.string().min(8).max(200);
 
 /** What a channel adapter posts to the intake endpoint. */

@@ -18,7 +18,11 @@ app.post("/v1/leads", async (req, res) => {
   }
   const input = parsed.data;
 
-  const key = resolveKey(input, req.header("Idempotency-Key")).key;
+  const resolved = resolveKey(input, req.header("Idempotency-Key"));
+  if (!resolved.ok) {
+    res.status(400).json({ error: resolved.error });
+    return;
+  }
 
   // The insert is the dedup: the unique index decides, not a prior SELECT, so
   // two concurrent deliveries of the same webhook cannot both win.
@@ -38,7 +42,7 @@ app.post("/v1/leads", async (req, res) => {
      ON CONFLICT (idempotency_key)
      DO UPDATE SET idempotency_key = leads.idempotency_key
        RETURNING id, status, (xmax = 0) AS inserted`,
-    [key, input.channel, input.text, input.contact ?? null],
+    [resolved.key, input.channel, input.text, input.contact ?? null],
   );
 
   const lead = rows[0];

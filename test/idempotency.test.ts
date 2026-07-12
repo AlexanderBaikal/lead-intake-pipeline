@@ -42,3 +42,19 @@ test("the body field wins, then the header, then the derived key", () => {
   assert.deepEqual(resolveKey(lead(), header), { ok: true, key: header });
   assert.deepEqual(resolveKey(lead(), undefined), { ok: true, key: deriveKey(lead()) });
 });
+
+test("an empty header is rejected, not accepted as a key", () => {
+  // The bug this pins: "" passed a `typeof === "string"` check, so every
+  // request sending a blank Idempotency-Key deduped onto one shared lead.
+  const result = resolveKey(lead(), "");
+  assert.equal(result.ok, false);
+
+  const stillDerives = resolveKey(lead(), undefined);
+  assert.equal(stillDerives.ok, true);
+});
+
+test("a header that breaks the documented bounds is rejected", () => {
+  assert.equal(resolveKey(lead(), "short").ok, false);
+  assert.equal(resolveKey(lead(), "x".repeat(201)).ok, false);
+  assert.equal(resolveKey(lead(), "x".repeat(200)).ok, true);
+});

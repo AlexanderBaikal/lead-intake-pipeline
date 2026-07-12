@@ -27,11 +27,19 @@ export function deriveKey(input: LeadInput): string {
     .digest("hex");
 }
 
-export type ResolvedKey = { ok: true; key: string };
+export type ResolvedKey =
+  { ok: true; key: string } | { ok: false; error: "invalid_idempotency_key" };
 
-/** Body field first, then the header, then the derived key. */
+/**
+ * Body field first, then the header, then the derived key.
+ *
+ * The header is held to the same rules as the field. Left unchecked, an empty
+ * `Idempotency-Key:` counts as a key, and every request carrying one collapses
+ * onto a single lead.
+ */
 export function resolveKey(input: LeadInput, header: string | undefined): ResolvedKey {
+  if (header !== undefined && !IdempotencyKey.safeParse(header).success) {
+    return { ok: false, error: "invalid_idempotency_key" };
+  }
   return { ok: true, key: input.idempotency_key ?? header ?? deriveKey(input) };
 }
-
-export { IdempotencyKey };

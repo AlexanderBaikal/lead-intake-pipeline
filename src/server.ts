@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
-
 import express from "express";
 
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { resolveKey } from "./idempotency.js";
 import { log } from "./logger.js";
 import { enqueue } from "./queue.js";
 import { LeadInput } from "./schema.js";
@@ -19,14 +18,7 @@ app.post("/v1/leads", async (req, res) => {
   }
   const input = parsed.data;
 
-  // Webhooks are at-least-once and not all of them carry a delivery id. When
-  // the caller has none, the content is the identity.
-  const key =
-    input.idempotency_key ??
-    req.header("Idempotency-Key") ??
-    createHash("sha256")
-      .update([input.channel, input.contact ?? "", input.text].join("\u0000"))
-      .digest("hex");
+  const key = resolveKey(input, req.header("Idempotency-Key")).key;
 
   // The insert is the dedup: the unique index decides, not a prior SELECT, so
   // two concurrent deliveries of the same webhook cannot both win.

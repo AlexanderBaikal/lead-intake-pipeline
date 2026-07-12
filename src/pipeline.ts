@@ -1,3 +1,4 @@
+import { recordCall } from "./budget.js";
 import { pool } from "./db.js";
 import { getProvider } from "./llm/index.js";
 
@@ -41,10 +42,19 @@ export async function processLead(leadId: number): Promise<void> {
       contactHint: lead.contact_hint,
       referenceDate: lead.received_at,
     });
-    return {
-      result: { extracted: outcome.lead, source: outcome.source },
-      detail: `${outcome.source} · ${outcome.inputTokens} in / ${outcome.outputTokens} out`,
-    };
+
+    let detail = `${outcome.source} · ${outcome.inputTokens} in / ${outcome.outputTokens} out`;
+    if (outcome.model) {
+      const cost = await recordCall({
+        leadId,
+        model: outcome.model,
+        inputTokens: outcome.inputTokens,
+        outputTokens: outcome.outputTokens,
+      });
+      detail += ` · $${cost.toFixed(6)}`;
+    }
+
+    return { result: { extracted: outcome.lead, source: outcome.source }, detail };
   });
 
   await pool.query(

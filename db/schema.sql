@@ -41,3 +41,17 @@ CREATE TABLE IF NOT EXISTS steps (
 );
 
 CREATE INDEX IF NOT EXISTS steps_lead_idx ON steps (lead_id, id);
+
+-- One row per model call. This table *is* the cost control: the ceiling is
+-- enforced by summing it, so spend can never be inferred from an estimate.
+CREATE TABLE IF NOT EXISTS llm_calls (
+  id            bigserial PRIMARY KEY,
+  lead_id       bigint REFERENCES leads(id) ON DELETE SET NULL,
+  model         text        NOT NULL,
+  input_tokens  int         NOT NULL,
+  output_tokens int         NOT NULL,
+  cost_usd      numeric(12, 6) NOT NULL,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS llm_calls_created_idx ON llm_calls (created_at);

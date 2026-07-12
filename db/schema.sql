@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS llm_calls (
   model         text        NOT NULL,
   input_tokens  int         NOT NULL,
   output_tokens int         NOT NULL,
-  cost_usd      numeric(12, 6) NOT NULL,
+  cost_micro_usd bigint     NOT NULL,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 

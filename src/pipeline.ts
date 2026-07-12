@@ -1,6 +1,7 @@
 import { recordCall } from "./budget.js";
 import { pool } from "./db.js";
 import { getProvider } from "./llm/index.js";
+import { microToUsd } from "./pricing.js";
 
 async function step<T>(
   leadId: number,
@@ -51,7 +52,7 @@ export async function processLead(leadId: number): Promise<void> {
         inputTokens: outcome.inputTokens,
         outputTokens: outcome.outputTokens,
       });
-      detail += ` · $${cost.toFixed(6)}`;
+      detail += ` · $${microToUsd(cost).toFixed(6)}`;
     }
 
     return { result: { extracted: outcome.lead, source: outcome.source }, detail };

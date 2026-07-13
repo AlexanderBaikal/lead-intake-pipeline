@@ -26,7 +26,9 @@ export async function claimJob(): Promise<Job | null> {
       WHERE id = (
         SELECT id FROM jobs
          WHERE status = 'queued' AND run_after <= now()
-         ORDER BY run_after
+         -- id breaks the tie: everything enqueued in the same instant shares a
+         -- run_after, and without it the queue is only approximately FIFO.
+         ORDER BY run_after, id
          FOR UPDATE SKIP LOCKED
          LIMIT 1
       )

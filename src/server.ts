@@ -1,9 +1,11 @@
 import express from "express";
 
+import { currentSpend } from "./budget.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { resolveKey } from "./idempotency.js";
 import { log } from "./logger.js";
+import { microToUsd } from "./pricing.js";
 import { enqueue } from "./queue.js";
 import { LeadInput } from "./schema.js";
 
@@ -69,6 +71,26 @@ app.get("/v1/leads/:id", async (req, res) => {
   );
 
   res.json({ ...lead.rows[0], steps: steps.rows });
+});
+
+app.get("/v1/leads", async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, channel, status, extraction_source, received_at
+       FROM leads ORDER BY id DESC LIMIT 20`,
+  );
+  res.json({ leads: rows });
+});
+
+app.get("/v1/budget", async (_req, res) => {
+  const state = await currentSpend();
+  res.json({
+    window: "24h",
+    model: config.llmModel,
+    provider: config.llmProvider,
+    spent_usd: Number(microToUsd(state.spentMicroUsd).toFixed(6)),
+    ceiling_usd: Number(microToUsd(state.ceilingMicroUsd).toFixed(2)),
+    remaining_usd: Number(microToUsd(state.remainingMicroUsd).toFixed(6)),
+  });
 });
 
 app.get("/health", async (_req, res) => {

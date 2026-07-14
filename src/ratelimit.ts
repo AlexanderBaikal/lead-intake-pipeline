@@ -2,21 +2,26 @@
  * Token bucket sized to the downstream CRM's documented 60 writes/minute.
  *
  * Pacing beats reacting: a bucket keeps us under the limit, whereas retrying
- * on 429 means every burst pays a round trip to find out it was too fast.
+ * on 429 means every burst pays a round trip to find out it was too fast, and
+ * a queue that drains faster than the partner accepts just converts throughput
+ * into error rate.
  */
 export class TokenBucket {
   private tokens: number;
-  private lastRefill = Date.now();
+  private lastRefill: number;
 
   constructor(
     private readonly capacity: number,
     private readonly refillPerSecond: number,
+    private readonly now: () => number = Date.now,
   ) {
     this.tokens = capacity;
+    this.lastRefill = now();
   }
 
+  /** Credit the tokens that have accrued since the last call, capped. */
   private refill(): void {
-    const now = Date.now();
+    const now = this.now();
     const elapsedSeconds = (now - this.lastRefill) / 1000;
     if (elapsedSeconds <= 0) return;
     this.tokens = Math.min(
@@ -40,10 +45,12 @@ export class TokenBucket {
     return Math.ceil(((1 - this.tokens) / this.refillPerSecond) * 1000);
   }
 
-  async take(): Promise<void> {
+  async take(
+    sleep = (ms: number) => new Promise((r) => setTimeout(r, ms)),
+  ): Promise<void> {
     for (;;) {
       if (this.tryTake()) return;
-      await new Promise((resolve) => setTimeout(resolve, this.waitMs()));
+      await sleep(this.waitMs());
     }
   }
 }

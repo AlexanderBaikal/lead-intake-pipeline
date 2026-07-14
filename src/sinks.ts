@@ -24,19 +24,37 @@ async function post(url: string, payload: unknown): Promise<void> {
   }
 }
 
-/** Writes the structured lead to the CRM, paced by the token bucket. */
-export async function deliverToCrm(leadId: number, payload: unknown): Promise<string> {
-  if (config.crmWebhookUrl) {
-    await crmBucket.take();
-    await post(config.crmWebhookUrl, payload);
+/**
+ * Every delivery is written to `deliveries` whether or not a webhook is
+ * configured, so an unconfigured demo still has somewhere real to deliver to
+ * and a configured one keeps a record of what it sent.
+ */
+async function deliver(
+  leadId: number,
+  sink: string,
+  url: string | null,
+  payload: unknown,
+  bucket?: TokenBucket,
+): Promise<string> {
+  // Pacing protects the partner's limit, so it applies to the network call and
+  // not to the local insert that stands in for it.
+  if (url) {
+    await bucket?.take();
+    await post(url, payload);
   }
 
   await pool.query(
     `INSERT INTO deliveries (lead_id, sink, payload) VALUES ($1, $2, $3)`,
-    [leadId, "crm", JSON.stringify(payload)],
+    [leadId, sink, JSON.stringify(payload)],
   );
 
-  return config.crmWebhookUrl
-    ? `posted to ${new URL(config.crmWebhookUrl).host}`
-    : "recorded in local deliveries table";
+  return url ? `posted to ${new URL(url).host}` : "recorded in local deliveries table";
 }
+
+/** Writes the structured lead to the CRM, paced by the token bucket. */
+export const deliverToCrm = (leadId: number, payload: unknown): Promise<string> =>
+  deliver(leadId, "crm", config.crmWebhookUrl, payload, crmBucket);
+
+/** Pings whoever handles the lead. Not rate-limited: one message per lead. */
+export const notify = (leadId: number, payload: unknown): Promise<string> =>
+  deliver(leadId, "notify", config.notifyWebhookUrl, payload);

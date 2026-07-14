@@ -6,6 +6,7 @@ import { extract } from "./llm/mock.js";
 import { log } from "./logger.js";
 import { microToUsd } from "./pricing.js";
 import type { ExtractedLead } from "./schema.js";
+import { deliverToCrm } from "./sinks.js";
 
 interface LeadRow {
   id: number;
@@ -116,9 +117,18 @@ export async function processLead(leadId: number): Promise<void> {
   });
 
   await pool.query(
-    `UPDATE leads
-        SET extracted = $2, extraction_source = $3, status = 'done', completed_at = now()
-      WHERE id = $1`,
+    `UPDATE leads SET extracted = $2, extraction_source = $3 WHERE id = $1`,
     [leadId, JSON.stringify(extracted), source],
+  );
+
+  const crmPayload = { lead_id: leadId, channel: lead.channel, ...extracted };
+  await step(leadId, "deliver_crm", async () => ({
+    result: null,
+    detail: await deliverToCrm(leadId, crmPayload),
+  }));
+
+  await pool.query(
+    `UPDATE leads SET status = 'done', completed_at = now() WHERE id = $1`,
+    [leadId],
   );
 }

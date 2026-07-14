@@ -8,4 +8,6 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 
   budgetCeilingUsd: Number(process.env.BUDGET_CEILING_USD ?? 5),
+  crmRateLimitPerMin: Number(process.env.CRM_RATE_LIMIT_PER_MIN ?? 60),
+  crmWebhookUrl: process.env.CRM_WEBHOOK_URL || null,
 };

@@ -55,3 +55,13 @@ CREATE TABLE IF NOT EXISTS llm_calls (
 );
 
 CREATE INDEX IF NOT EXISTS llm_calls_created_idx ON llm_calls (created_at);
+
+-- Stands in for the CRM and the notifier when no webhook URL is configured,
+-- so the demo has somewhere real to deliver to.
+CREATE TABLE IF NOT EXISTS deliveries (
+  id         bigserial PRIMARY KEY,
+  lead_id    bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  sink       text        NOT NULL,
+  payload    jsonb       NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

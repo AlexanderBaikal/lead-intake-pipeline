@@ -1,4 +1,6 @@
+import { config } from "../config.js";
 import type { ExtractedLead } from "../schema.js";
+import { localCalendarDay } from "../time.js";
 
 /**
  * Rule-based extraction. Good enough to be useful, nowhere near good enough
@@ -113,12 +115,21 @@ function detectName(text: string): string | null {
 }
 
 export interface ExtractOptions {
+  /** The instant the enquiry arrived; relative dates resolve against it. */
   referenceDate?: Date;
+  /** Contact the channel already knows, used when the text carries none. */
   contactHint?: string | null;
+  /** The business calendar "mañana" is relative to. */
+  timeZone?: string;
 }
 
 export function extract(text: string, options: ExtractOptions = {}): ExtractedLead {
-  const reference = options.referenceDate ?? new Date();
+  // Collapse the arrival instant to the business calendar day before any day
+  // arithmetic — see src/time.ts for why UTC would be wrong here.
+  const reference = localCalendarDay(
+    options.referenceDate ?? new Date(),
+    options.timeZone ?? config.businessTimeZone,
+  );
 
   let service: ExtractedLead["service"] = "other";
   for (const [re, value] of SERVICE_PATTERNS) {

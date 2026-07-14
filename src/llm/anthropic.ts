@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { config } from "../config.js";
 import { ExtractedLead } from "../schema.js";
+import { localDateISO } from "../time.js";
 import { extract } from "./mock.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
@@ -27,9 +28,10 @@ const SYSTEM = [
  * is what makes the cached prefix reusable at ~0.1x input price.
  */
 function userPrompt(request: ExtractRequest): string {
-  const reference = request.referenceDate.toISOString().slice(0, 10);
+  // The business calendar day, not the UTC one — see src/time.ts.
+  const reference = localDateISO(request.referenceDate, config.businessTimeZone);
   return [
-    `Reference date (today): ${reference}`,
+    `Reference date (today, ${config.businessTimeZone}): ${reference}`,
     request.contactHint ? `Contact known from the channel: ${request.contactHint}` : null,
     "Enquiry:",
     request.text,

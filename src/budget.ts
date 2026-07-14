@@ -15,7 +15,7 @@ export async function currentSpend(): Promise<BudgetState> {
        FROM llm_calls
       WHERE created_at > now() - interval '24 hours'`,
   );
-  const spentMicroUsd = Number(rows[0].total);
+  const spentMicroUsd = Number(rows[0]?.total ?? "0");
   const ceilingMicroUsd = usdToMicro(config.budgetCeilingUsd);
   return {
     spentMicroUsd,

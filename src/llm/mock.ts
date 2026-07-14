@@ -63,7 +63,7 @@ const addDays = (d: Date, days: number): Date => {
 
 function detectDate(text: string, reference: Date): string | null {
   const explicit = /\b(\d{4}-\d{2}-\d{2})\b/.exec(text);
-  if (explicit) return explicit[1];
+  if (explicit?.[1]) return explicit[1];
 
   if (/\b(pasado ma[nñ]ana|day after tomorrow)\b/i.test(text)) {
     return iso(addDays(reference, 2));
@@ -83,7 +83,7 @@ function detectDate(text: string, reference: Date): string | null {
 
 function detectCount(text: string): number {
   const digits = new RegExp(`\\b(\\d{1,2})\\s*(?:${COUNTABLE})\\b`, "i").exec(text);
-  if (digits) {
+  if (digits?.[1]) {
     const n = Number(digits[1]);
     if (n >= 1 && n <= 50) return n;
   }
@@ -98,9 +98,9 @@ function detectCount(text: string): number {
 
 function detectContact(text: string): string | null {
   const email = /[\w.+-]+@[\w-]+\.[\w.]{2,}/.exec(text);
-  if (email) return email[0];
+  if (email?.[0]) return email[0];
   const phone = /(\+?\d[\d\s().-]{6,}\d)/.exec(text);
-  if (phone) return phone[1].trim();
+  if (phone?.[1]) return phone[1].trim();
   return null;
 }
 
@@ -109,7 +109,7 @@ function detectName(text: string): string | null {
     /\b(?:me llamo|mi nombre es|soy|my name is|this is|i am|i'm)\s+(\w+(?:\s+\w+)?)/i.exec(
       text,
     );
-  return m ? m[1].trim() : null;
+  return m?.[1] ? m[1].trim() : null;
 }
 
 export interface ExtractOptions {

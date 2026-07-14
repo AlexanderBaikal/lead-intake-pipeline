@@ -47,7 +47,8 @@ app.post("/v1/leads", async (req, res) => {
     [resolved.key, input.channel, input.text, input.contact ?? null],
   );
 
-  const lead = rows[0];
+  // DO UPDATE always returns the surviving row, so there is no empty case.
+  const lead = rows[0]!;
 
   if (lead.inserted) {
     await enqueue(lead.id);

@@ -1,8 +1,8 @@
 import { canAfford, recordCall } from "./budget.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { heuristicExtract } from "./llm/heuristic.js";
 import { getProvider } from "./llm/index.js";
-import { extract } from "./llm/mock.js";
 import { log } from "./logger.js";
 import { microToUsd } from "./pricing.js";
 import type { ExtractedLead } from "./schema.js";
@@ -45,7 +45,7 @@ interface Extraction {
   detail: string;
 }
 
-async function runExtraction(lead: LeadRow): Promise<Extraction> {
+async function extract(lead: LeadRow): Promise<Extraction> {
   const provider = getProvider();
   const request = {
     text: lead.raw_text,
@@ -72,7 +72,7 @@ async function runExtraction(lead: LeadRow): Promise<Extraction> {
         ceilingUsd: ceiling,
       });
       return {
-        extracted: extract(lead.raw_text, {
+        extracted: heuristicExtract(lead.raw_text, {
           referenceDate: lead.received_at,
           contactHint: lead.contact_hint,
         }),
@@ -112,7 +112,7 @@ export async function processLead(leadId: number): Promise<void> {
   await pool.query(`UPDATE leads SET status = 'processing' WHERE id = $1`, [leadId]);
 
   const { extracted, source } = await step(leadId, "extract", async () => {
-    const outcome = await runExtraction(lead);
+    const outcome = await extract(lead);
     return { result: outcome, detail: outcome.detail };
   });
 

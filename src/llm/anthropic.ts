@@ -4,7 +4,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { config } from "../config.js";
 import { ExtractedLead } from "../schema.js";
 import { localDateISO } from "../time.js";
-import { extract } from "./mock.js";
+import { heuristicExtract } from "./heuristic.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
 /**
@@ -80,7 +80,7 @@ export class AnthropicProvider implements LlmProvider {
     // failing the lead over — parse it with the rules and mark the row.
     if (response.stop_reason === "refusal" || response.parsed_output === null) {
       return {
-        lead: extract(request.text, {
+        lead: heuristicExtract(request.text, {
           referenceDate: request.referenceDate,
           contactHint: request.contactHint,
         }),

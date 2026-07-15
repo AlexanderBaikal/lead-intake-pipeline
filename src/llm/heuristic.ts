@@ -3,8 +3,16 @@ import type { ExtractedLead } from "../schema.js";
 import { localCalendarDay } from "../time.js";
 
 /**
- * Rule-based extraction. Good enough to be useful, nowhere near good enough
- * for the messages people actually send.
+ * A deterministic parser for the same job the model does.
+ *
+ * It earns its keep twice over: it backs the offline provider (so the repo
+ * runs and the evals score with no API key), and it is the fallback the
+ * pipeline uses when a model call is refused, truncated, or blocked by the
+ * budget ceiling. A lead parsed a bit worse still reaches the CRM; a lead lost
+ * because the model was briefly unavailable does not.
+ *
+ * That second role is why this is not called `mock`: the same code runs in
+ * production, on the path that matters most when something else has failed.
  */
 
 const ES_MARKERS =
@@ -114,7 +122,7 @@ function detectName(text: string): string | null {
   return m?.[1] ? m[1].trim() : null;
 }
 
-export interface ExtractOptions {
+export interface HeuristicOptions {
   /** The instant the enquiry arrived; relative dates resolve against it. */
   referenceDate?: Date;
   /** Contact the channel already knows, used when the text carries none. */
@@ -123,7 +131,10 @@ export interface ExtractOptions {
   timeZone?: string;
 }
 
-export function extract(text: string, options: ExtractOptions = {}): ExtractedLead {
+export function heuristicExtract(
+  text: string,
+  options: HeuristicOptions = {},
+): ExtractedLead {
   // Collapse the arrival instant to the business calendar day before any day
   // arithmetic — see src/time.ts for why UTC would be wrong here.
   const reference = localCalendarDay(

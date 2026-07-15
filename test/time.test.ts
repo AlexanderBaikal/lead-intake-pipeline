@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { extract } from "../src/llm/mock.js";
+import { heuristicExtract } from "../src/llm/heuristic.js";
 import { localCalendarDay, localDateISO } from "../src/time.js";
 
 /**
@@ -48,14 +48,14 @@ test("noon, not midnight — a midnight carrier reads as yesterday in the Americ
 });
 
 test("'mañana' sent late at night means the customer's tomorrow", () => {
-  const result = extract("lavado mañana por favor", {
+  const result = heuristicExtract("lavado mañana por favor", {
     referenceDate: LATE_EVENING_PANAMA,
     timeZone: "America/Panama",
   });
   assert.equal(result.requested_date, "2026-04-12");
 
   // The same instant read as UTC is the regression: one day too far out.
-  const naive = extract("lavado mañana por favor", {
+  const naive = heuristicExtract("lavado mañana por favor", {
     referenceDate: LATE_EVENING_PANAMA,
     timeZone: "UTC",
   });
@@ -66,7 +66,7 @@ test("a weekday is resolved from the local day of week", () => {
   // Locally 2026-04-11 is a Saturday; in UTC the same instant is Sunday the
   // 12th, from which "lunes" would be one day nearer.
   assert.equal(
-    extract("nos vemos el lunes", {
+    heuristicExtract("nos vemos el lunes", {
       referenceDate: LATE_EVENING_PANAMA,
       timeZone: "America/Panama",
     }).requested_date,

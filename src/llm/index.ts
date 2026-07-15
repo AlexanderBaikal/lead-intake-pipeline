@@ -1,11 +1,14 @@
 import { config } from "../config.js";
 import { AnthropicProvider } from "./anthropic.js";
-import { extract } from "./mock.js";
+import { heuristicExtract } from "./heuristic.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
 export type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
-/** Runs the rule-based extractor, so the repo works with no API key in sight. */
+/**
+ * Runs the same deterministic parser the pipeline falls back to, so the repo
+ * boots, the demo works and the evals score with no API key in sight.
+ */
 class MockProvider implements LlmProvider {
   readonly name = "mock";
   readonly metered = false;
@@ -18,7 +21,7 @@ class MockProvider implements LlmProvider {
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     return {
-      lead: extract(request.text, {
+      lead: heuristicExtract(request.text, {
         referenceDate: request.referenceDate,
         contactHint: request.contactHint,
       }),

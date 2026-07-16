@@ -69,6 +69,10 @@ const WEEKDAYS: Record<string, number> = {
   sabado: 6, "sábado": 6, saturday: 6
 };
 
+const WEEKDAY_PATTERNS: ReadonlyArray<[RegExp, number]> = Object.entries(WEEKDAYS).map(
+  ([word, day]) => [new RegExp(`\\b${word}\\b`, "i"), day],
+);
+
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
 
 const addDays = (d: Date, days: number): Date => {
@@ -89,9 +93,10 @@ function detectDate(text: string, reference: Date): string | null {
     return iso(reference);
   }
 
-  for (const [word, target] of Object.entries(WEEKDAYS)) {
-    if (!new RegExp(`\\b${word}\\b`, "i").test(text)) continue;
-    const delta = (target - reference.getUTCDay() + 7) % 7;
+  for (const [pattern, target] of WEEKDAY_PATTERNS) {
+    if (!pattern.test(text)) continue;
+    // "next Friday" from a Friday means the following one, not today.
+    const delta = (target - reference.getUTCDay() + 7) % 7 || 7;
     return iso(addDays(reference, delta));
   }
   return null;

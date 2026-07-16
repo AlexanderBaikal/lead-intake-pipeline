@@ -66,3 +66,11 @@ test("subscription wins over a wash mentioned in the same sentence", () => {
   });
   assert.equal(result.service, "subscription");
 });
+
+test("a weekday that matches the reference day means next week, not today", () => {
+  // REF is a Saturday; "sabado" must resolve seven days out, not to REF itself.
+  assert.equal(
+    heuristicExtract("nos vemos el sabado", { referenceDate: REF }).requested_date,
+    "2026-04-18",
+  );
+});

@@ -3,3 +3,6 @@ package-lock.json
 
 # Prose is wrapped by hand. Markdown is reviewed, not formatted.
 *.md
+
+# A fixture file: the cases are grouped for reading, not for a formatter.
+evals/cases.json

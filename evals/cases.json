@@ -1,0 +1,303 @@
+[
+  {
+    "id": "es-basic-tomorrow",
+    "note": "The canonical case: Spanish, relative date, count stated in digits.",
+    "reference_date": "2026-04-11",
+    "text": "hola, necesito precio para lavado de 3 camionetas mañana temprano",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 3,
+      "vehicle_types": [
+        "pickup"
+      ],
+      "requested_date": "2026-04-12",
+      "urgency": "flexible",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-detailing-weekday",
+    "note": "Weekday resolved forward from a Saturday reference.",
+    "reference_date": "2026-04-11",
+    "text": "Hi, my name is David Cole. Need a full detail on my SUV this Friday, phone 6123-4455",
+    "expect": {
+      "customer_name": "David Cole",
+      "contact": "6123-4455",
+      "service": "detailing",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "suv"
+      ],
+      "requested_date": "2026-04-17",
+      "urgency": "this_week",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-urgent-no-date",
+    "note": "Urgency stated without any date — the date must stay null, not be guessed.",
+    "reference_date": "2026-04-11",
+    "text": "URGENTE necesito que me revisen el carro, hace un ruido raro. me llamo Carlos",
+    "expect": {
+      "customer_name": "Carlos",
+      "contact": null,
+      "service": "inspection",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "requested_date": null,
+      "urgency": "asap",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-subscription",
+    "note": "Subscription must win over the word 'wash' that appears in the same sentence.",
+    "reference_date": "2026-04-11",
+    "text": "What does the monthly plan cost? I'd wash the car maybe twice a week.",
+    "expect": {
+      "service": "subscription",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "requested_date": null,
+      "urgency": "flexible",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-today-email",
+    "note": "Email present in the body; 'hoy' pins both the date and the urgency.",
+    "reference_date": "2026-04-11",
+    "text": "Buenas, quiero lavado hoy si se puede. escribanme a ana.mendez@correo.com",
+    "expect": {
+      "contact": "ana.mendez@correo.com",
+      "service": "wash",
+      "vehicle_count": 1,
+      "requested_date": "2026-04-11",
+      "urgency": "today",
+      "language": "es"
+    }
+  },
+  {
+    "id": "es-fleet-word-number",
+    "note": "Count written as a word, not a digit.",
+    "reference_date": "2026-04-11",
+    "text": "Somos una empresa, necesitamos lavado para cinco vehiculos el lunes",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 5,
+      "requested_date": "2026-04-13",
+      "urgency": "this_week",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-repair-dent",
+    "note": "Damage vocabulary maps to repair, not to wash.",
+    "reference_date": "2026-04-11",
+    "text": "somebody left a dent on my pickup in the parking lot. can you fix it?",
+    "expect": {
+      "service": "repair",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "pickup"
+      ],
+      "requested_date": null,
+      "urgency": "flexible",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-explicit-iso-date",
+    "note": "An explicit ISO date must beat any relative wording.",
+    "reference_date": "2026-04-11",
+    "text": "quiero agendar un pulido para el 2026-05-05, gracias",
+    "expect": {
+      "service": "detailing",
+      "vehicle_count": 1,
+      "requested_date": "2026-05-05",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-two-cars",
+    "note": "Digit count with the English noun.",
+    "reference_date": "2026-04-11",
+    "text": "Quote for washing 2 cars tomorrow please",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 2,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "requested_date": "2026-04-12",
+      "urgency": "this_week",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-day-after-tomorrow",
+    "note": "'pasado mañana' must not collapse into 'mañana'.",
+    "reference_date": "2026-04-11",
+    "text": "pasado mañana puedo llevar la moto para limpieza",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "motorcycle"
+      ],
+      "requested_date": "2026-04-13",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-no-service-stated",
+    "note": "A vague enquiry: service is genuinely unknown and must read 'other'.",
+    "reference_date": "2026-04-11",
+    "text": "Hey, are you guys open on Sundays?",
+    "expect": {
+      "service": "other",
+      "vehicle_count": 1,
+      "vehicle_types": [],
+      "urgency": "flexible",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-typos",
+    "note": "Dropped letter and a missing tilde — the stem match still classifies it.",
+    "reference_date": "2026-04-11",
+    "text": "necesito lavdo para mi camioneta manana",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "pickup"
+      ],
+      "requested_date": "2026-04-12",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-phone-international",
+    "note": "International dialling format.",
+    "reference_date": "2026-04-11",
+    "text": "This is Marcus. Detailing for a van, call me on +507 6123 9988",
+    "expect": {
+      "customer_name": "Marcus",
+      "contact": "+507 6123 9988",
+      "service": "detailing",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "van"
+      ],
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-mixed-fleet",
+    "note": "Two vehicle types in one enquiry.",
+    "reference_date": "2026-04-11",
+    "text": "tengo un sedan y una camioneta, cuanto por lavar los dos?",
+    "expect": {
+      "service": "wash",
+      "vehicle_types": [
+        "pickup",
+        "sedan"
+      ],
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-asap",
+    "note": "'right now' is asap, and it also fixes the date to today.",
+    "reference_date": "2026-04-11",
+    "text": "Can someone look at my car right now? Engine light is on.",
+    "expect": {
+      "service": "other",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "requested_date": "2026-04-11",
+      "urgency": "asap",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-wax",
+    "note": "Encerado is detailing.",
+    "reference_date": "2026-04-11",
+    "text": "buenas, hacen encerado? mi auto lo necesita",
+    "expect": {
+      "service": "detailing",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "urgency": "flexible",
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-inspection-checkup",
+    "note": "Check-up maps to inspection.",
+    "reference_date": "2026-04-11",
+    "text": "Booking a check-up for the truck before a long trip",
+    "expect": {
+      "service": "inspection",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "pickup"
+      ],
+      "urgency": "flexible",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-seven-cars",
+    "note": "Larger fleet, word form.",
+    "reference_date": "2026-04-11",
+    "text": "cotizacion para siete carros de la flota, lavado mensual no, solo una vez",
+    "expect": {
+      "service": "subscription",
+      "vehicle_count": 7,
+      "language": "es"
+    }
+  },
+  {
+    "id": "en-truncated",
+    "note": "A message cut off mid-sentence still has to produce a valid record.",
+    "reference_date": "2026-04-11",
+    "text": "hi i need my suv washed on tuesd",
+    "expect": {
+      "service": "wash",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "suv"
+      ],
+      "requested_date": null,
+      "urgency": "flexible",
+      "language": "en"
+    }
+  },
+  {
+    "id": "es-scratch-repair",
+    "note": "Rayón is repair; the accent is optional in real messages.",
+    "reference_date": "2026-04-11",
+    "text": "tengo un rayon en la puerta del carro, lo pueden arreglar el viernes?",
+    "expect": {
+      "service": "repair",
+      "vehicle_count": 1,
+      "vehicle_types": [
+        "sedan"
+      ],
+      "requested_date": "2026-04-17",
+      "urgency": "this_week",
+      "language": "es"
+    }
+  }
+]

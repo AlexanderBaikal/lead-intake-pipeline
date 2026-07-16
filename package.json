@@ -8,6 +8,7 @@
     "start": "tsx src/server.ts",
     "worker": "tsx src/worker.ts",
     "migrate": "tsx src/migrate.ts",
+    "eval": "tsx evals/run.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",

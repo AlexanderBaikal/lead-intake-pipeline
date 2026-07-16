@@ -32,17 +32,34 @@ const SERVICE_PATTERNS: ReadonlyArray<[RegExp, ExtractedLead["service"]]> = [
   [/\b(lav\w*|wash\w*|limpieza|clean\w*)\b/i, "wash"],
 ];
 
-/** Plurals are explicit: `\bcamioneta\b` does not match "camionetas". */
-const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
-  [/\b(pickups?|pick-?ups?|camionetas?|trucks?)\b/i, "pickup"],
-  [/\b(suvs?|4x4|jeeps?)\b/i, "suv"],
-  [/\b(sedan(?:es|s)?|sed[aá]n|carros?|coches?|autos?|cars?)\b/i, "sedan"],
-  [/\b(vans?|minivans?|busetas?)\b/i, "van"],
-  [/\b(motos?|motorcycles?|bikes?)\b/i, "motorcycle"],
+/**
+ * The nouns a vehicle can be called, grouped by the type they resolve to.
+ * Plurals are explicit: `\bcamioneta\b` does not match "camionetas".
+ */
+const VEHICLE_NOUNS: ReadonlyArray<[string, string]> = [
+  ["pickups?|pick-?ups?|camionetas?|trucks?", "pickup"],
+  ["suvs?|4x4|jeeps?", "suv"],
+  ["sedan(?:es|s)?|sed[aá]n|carros?|coches?|autos?|cars?", "sedan"],
+  ["vans?|minivans?|busetas?", "van"],
+  ["motos?|motorcycles?|bikes?", "motorcycle"],
 ];
 
-const COUNTABLE =
-  "camionetas?|carros?|coches?|autos?|cars?|veh[ií]culos?|vehicles?|motos?";
+const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = VEHICLE_NOUNS.map(
+  ([nouns, type]) => [new RegExp(`\\b(?:${nouns})\\b`, "i"), type],
+);
+
+/**
+ * What a count can attach to: every noun above, plus the generic words a
+ * fleet enquiry uses instead of naming a type.
+ *
+ * Built from the same list rather than typed out again — the second copy is
+ * how "two SUVs" came to read as one vehicle, because `suvs` was known to the
+ * type patterns and missing from the counting ones.
+ */
+const COUNTABLE = [
+  ...VEHICLE_NOUNS.map(([nouns]) => nouns),
+  "veh[ií]culos?|vehicles?|units?|unidades?",
+].join("|");
 
 // prettier-ignore
 const NUMBER_WORDS: Record<string, number> = {
@@ -55,7 +72,7 @@ const NUMBER_WORDS: Record<string, number> = {
   siete: 7, seven: 7,
   ocho: 8, eight: 8,
   nueve: 9, nine: 9,
-  diez: 10, ten: 10
+  diez: 10, ten: 10,
 };
 
 // prettier-ignore
@@ -66,7 +83,7 @@ const WEEKDAYS: Record<string, number> = {
   miercoles: 3, "miércoles": 3, wednesday: 3,
   jueves: 4, thursday: 4,
   viernes: 5, friday: 5,
-  sabado: 6, "sábado": 6, saturday: 6
+  sabado: 6, "sábado": 6, saturday: 6,
 };
 
 const WEEKDAY_PATTERNS: ReadonlyArray<[RegExp, number]> = Object.entries(WEEKDAYS).map(
@@ -102,15 +119,22 @@ function detectDate(text: string, reference: Date): string | null {
   return null;
 }
 
+const COUNT_IN_DIGITS = new RegExp(`\\b(\\d{1,2})\\s*(?:${COUNTABLE})\\b`, "i");
+
+/** Spelled-out counts, compiled once rather than per enquiry. */
+const COUNT_IN_WORDS: ReadonlyArray<[RegExp, number]> = Object.entries(NUMBER_WORDS).map(
+  ([word, value]) => [new RegExp(`\\b${word}\\s+(?:${COUNTABLE})\\b`, "i"), value],
+);
+
 function detectCount(text: string): number {
-  const digits = new RegExp(`\\b(\\d{1,2})\\s*(?:${COUNTABLE})\\b`, "i").exec(text);
+  const digits = COUNT_IN_DIGITS.exec(text);
   if (digits?.[1]) {
     const n = Number(digits[1]);
     if (n >= 1 && n <= 50) return n;
   }
 
-  for (const [word, value] of Object.entries(NUMBER_WORDS)) {
-    if (new RegExp(`\\b${word}\\s+(?:${COUNTABLE})\\b`, "i").test(text)) return value;
+  for (const [pattern, value] of COUNT_IN_WORDS) {
+    if (pattern.test(text)) return value;
   }
 
   // No count stated is overwhelmingly one vehicle, not "unknown".

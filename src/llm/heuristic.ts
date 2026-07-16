@@ -121,11 +121,18 @@ function detectContact(text: string): string | null {
 }
 
 function detectName(text: string): string | null {
-  const m =
-    /\b(?:me llamo|mi nombre es|soy|my name is|this is|i am|i'm)\s+(\w+(?:\s+\w+)?)/i.exec(
-      text,
-    );
-  return m?.[1] ? m[1].trim() : null;
+  // The lead-in is matched case-insensitively ("This is Marcus" is as common
+  // as "this is"), but the name itself must stay capitalised — otherwise
+  // "soy el dueño" reads "el" as a first name.
+  const patterns = [
+    /\b(?:[Mm]e llamo|[Mm]i nombre es|[Ss]oy)\s+([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ]+)?)/,
+    /\b(?:[Mm]y name is|[Tt]his is|[Ii] am|[Ii]'m)\s+([A-Z][\w]+(?:\s+[A-Z][\w]+)?)/,
+  ];
+  for (const re of patterns) {
+    const m = re.exec(text);
+    if (m?.[1]) return m[1].trim();
+  }
+  return null;
 }
 
 export interface HeuristicOptions {

@@ -59,3 +59,10 @@ test("falls back to the channel-supplied contact only when the text has none", (
   });
   assert.equal(fromHint.contact, "+50761234567");
 });
+
+test("subscription wins over a wash mentioned in the same sentence", () => {
+  const result = heuristicExtract("monthly plan? I'd wash it weekly", {
+    referenceDate: REF,
+  });
+  assert.equal(result.service, "subscription");
+});

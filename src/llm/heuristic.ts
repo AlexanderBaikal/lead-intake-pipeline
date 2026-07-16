@@ -18,21 +18,27 @@ import { localCalendarDay } from "../time.js";
 const ES_MARKERS =
   /\b(hola|necesito|quiero|precio|cuanto|cuánto|lavado|camioneta|mañana|manana|gracias|por favor|buenas|carro|coche|auto|semana|urgente)\b/i;
 
-/** Ordered: the first match wins. */
+/**
+ * Ordered: the first match wins. Subscription sits above wash because
+ * "monthly plan, I'd wash it weekly" is a plan enquiry, not a wash booking.
+ * Stems (`lav\w*`, `wash\w*`) rather than exact words — real messages carry
+ * conjugations and dropped letters, and "lavdo" is still a wash.
+ */
 const SERVICE_PATTERNS: ReadonlyArray<[RegExp, ExtractedLead["service"]]> = [
-  [/\b(lavado|lavar|wash|limpieza)\b/i, "wash"],
-  [/\b(detailing|pulido|encerado|wax|polish|ceramic)\b/i, "detailing"],
-  [/\b(reparar|arreglar|repair|fix|dent|scratch)\b/i, "repair"],
-  [/\b(revisar|inspeccion|inspección|inspection|check-?up)\b/i, "inspection"],
-  [/\b(suscripcion|suscripción|subscription|mensual|monthly plan)\b/i, "subscription"],
+  [/\b(suscri\w*|subscription|mensual\w*|monthly plan|plan mensual)\b/i, "subscription"],
+  [/\b(detail\w*|pulido|encerado|wax|polish|ceramic)\b/i, "detailing"],
+  [/\b(repar\w*|arregl\w*|repair|fix|abolladur\w*|dent|scratch|ray[oó]n)\b/i, "repair"],
+  [/\b(revis\w*|inspecci[oó]n|inspection|check-?up|diagn[oó]stico)\b/i, "inspection"],
+  [/\b(lav\w*|wash\w*|limpieza|clean\w*)\b/i, "wash"],
 ];
 
+/** Plurals are explicit: `\bcamioneta\b` does not match "camionetas". */
 const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
-  [/\b(pickup|pick-up|camioneta|truck)\b/i, "pickup"],
-  [/\b(suv|4x4|jeep)\b/i, "suv"],
-  [/\b(sedan|sedán|carro|coche|auto|car)\b/i, "sedan"],
-  [/\b(van|minivan|buseta)\b/i, "van"],
-  [/\b(moto|motorcycle|bike)\b/i, "motorcycle"],
+  [/\b(pickups?|pick-?ups?|camionetas?|trucks?)\b/i, "pickup"],
+  [/\b(suvs?|4x4|jeeps?)\b/i, "suv"],
+  [/\b(sedan(?:es|s)?|sed[aá]n|carros?|coches?|autos?|cars?)\b/i, "sedan"],
+  [/\b(vans?|minivans?|busetas?)\b/i, "van"],
+  [/\b(motos?|motorcycles?|bikes?)\b/i, "motorcycle"],
 ];
 
 const COUNTABLE =

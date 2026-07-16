@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   max_attempts int        NOT NULL DEFAULT 5,
   run_after   timestamptz NOT NULL DEFAULT now(),
   last_error  text,
+  locked_at   timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 

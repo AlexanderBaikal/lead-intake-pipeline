@@ -1,15 +1,24 @@
 import { pool } from "./db.js";
 import { log } from "./logger.js";
 import { processLead } from "./pipeline.js";
-import { claimJob, completeJob, failJob } from "./queue.js";
+import { claimJob, completeJob, failJob, reclaimStale } from "./queue.js";
 
 const IDLE_SLEEP_MS = 500;
+const RECLAIM_EVERY_MS = 30_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 log.info("worker started");
 
+let lastReclaim = 0;
+
 for (;;) {
+  if (Date.now() - lastReclaim > RECLAIM_EVERY_MS) {
+    lastReclaim = Date.now();
+    const reclaimed = await reclaimStale();
+    if (reclaimed > 0) log.warn("reclaimed stale jobs", { count: reclaimed });
+  }
+
   const job = await claimJob();
   if (!job) {
     await sleep(IDLE_SLEEP_MS);

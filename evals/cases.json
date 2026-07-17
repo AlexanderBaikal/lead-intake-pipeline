@@ -7,11 +7,9 @@
     "expect": {
       "service": "wash",
       "vehicle_count": 3,
-      "vehicle_types": [
-        "pickup"
-      ],
+      "vehicle_types": ["pickup"],
       "requested_date": "2026-04-12",
-      "urgency": "flexible",
+      "urgency": "this_week",
       "language": "es"
     }
   },
@@ -25,9 +23,7 @@
       "contact": "6123-4455",
       "service": "detailing",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "suv"
-      ],
+      "vehicle_types": ["suv"],
       "requested_date": "2026-04-17",
       "urgency": "this_week",
       "language": "en"
@@ -43,9 +39,7 @@
       "contact": null,
       "service": "inspection",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "requested_date": null,
       "urgency": "asap",
       "language": "es"
@@ -59,9 +53,7 @@
     "expect": {
       "service": "subscription",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "requested_date": null,
       "urgency": "flexible",
       "language": "en"
@@ -102,9 +94,7 @@
     "expect": {
       "service": "repair",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "pickup"
-      ],
+      "vehicle_types": ["pickup"],
       "requested_date": null,
       "urgency": "flexible",
       "language": "en"
@@ -130,9 +120,7 @@
     "expect": {
       "service": "wash",
       "vehicle_count": 2,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "requested_date": "2026-04-12",
       "urgency": "this_week",
       "language": "en"
@@ -146,9 +134,7 @@
     "expect": {
       "service": "wash",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "motorcycle"
-      ],
+      "vehicle_types": ["motorcycle"],
       "requested_date": "2026-04-13",
       "language": "es"
     }
@@ -174,9 +160,7 @@
     "expect": {
       "service": "wash",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "pickup"
-      ],
+      "vehicle_types": ["pickup"],
       "requested_date": "2026-04-12",
       "language": "es"
     }
@@ -191,9 +175,7 @@
       "contact": "+507 6123 9988",
       "service": "detailing",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "van"
-      ],
+      "vehicle_types": ["van"],
       "language": "en"
     }
   },
@@ -204,10 +186,7 @@
     "text": "tengo un sedan y una camioneta, cuanto por lavar los dos?",
     "expect": {
       "service": "wash",
-      "vehicle_types": [
-        "pickup",
-        "sedan"
-      ],
+      "vehicle_types": ["pickup", "sedan"],
       "language": "es"
     }
   },
@@ -219,9 +198,7 @@
     "expect": {
       "service": "other",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "requested_date": "2026-04-11",
       "urgency": "asap",
       "language": "en"
@@ -235,9 +212,7 @@
     "expect": {
       "service": "detailing",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "urgency": "flexible",
       "language": "es"
     }
@@ -250,9 +225,7 @@
     "expect": {
       "service": "inspection",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "pickup"
-      ],
+      "vehicle_types": ["pickup"],
       "urgency": "flexible",
       "language": "en"
     }
@@ -276,9 +249,7 @@
     "expect": {
       "service": "wash",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "suv"
-      ],
+      "vehicle_types": ["suv"],
       "requested_date": null,
       "urgency": "flexible",
       "language": "en"
@@ -292,9 +263,7 @@
     "expect": {
       "service": "repair",
       "vehicle_count": 1,
-      "vehicle_types": [
-        "sedan"
-      ],
+      "vehicle_types": ["sedan"],
       "requested_date": "2026-04-17",
       "urgency": "this_week",
       "language": "es"

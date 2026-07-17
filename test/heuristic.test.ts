@@ -87,6 +87,57 @@ test("counts against every noun it can name a vehicle type from", () => {
   }
 });
 
+test("two named types mean two vehicles, not the one the first article states", () => {
+  // "un sedan y una camioneta" states a count of one twice. The first `un`
+  // won and a two-vehicle enquiry reached the CRM as a single car, next to a
+  // vehicle_types of length two that said otherwise.
+  const result = heuristicExtract("tengo un sedan y una camioneta, lavar los dos?", {
+    referenceDate: REF,
+  });
+  assert.equal(result.vehicle_count, 2);
+  assert.deepEqual([...result.vehicle_types].sort(), ["pickup", "sedan"]);
+
+  // An explicit count larger than the number of named types still wins.
+  assert.equal(
+    heuristicExtract("siete carros de la flota", { referenceDate: REF }).vehicle_count,
+    7,
+  );
+});
+
+test("an ISO date is a date, not a phone number", () => {
+  // Enough digits and separators to satisfy the phone pattern, so "para el
+  // 2026-05-05" came back as the customer's contact. The lead then looked
+  // answerable and went straight through.
+  const result = heuristicExtract("quiero agendar un pulido para el 2026-05-05", {
+    referenceDate: REF,
+  });
+  assert.equal(result.contact, null);
+  assert.equal(result.requested_date, "2026-05-05");
+});
+
+test("a service word the sender negates does not classify the lead", () => {
+  // "lavado mensual no, solo una vez" is a one-off wash. Matching `mensual`
+  // filed it as a subscription, which is a different CRM pipeline.
+  assert.equal(
+    heuristicExtract("lavado mensual no, solo una vez", { referenceDate: REF }).service,
+    "wash",
+  );
+  // The plain keyword still classifies when nothing cancels it.
+  assert.equal(
+    heuristicExtract("quiero lavado mensual", { referenceDate: REF }).service,
+    "subscription",
+  );
+});
+
+test("a warning light is a diagnostic request, not an unclassified lead", () => {
+  assert.equal(
+    heuristicExtract("Engine light is on, can someone look at it?", {
+      referenceDate: REF,
+    }).service,
+    "inspection",
+  );
+});
+
 test("falls back to the channel-supplied contact only when the text has none", () => {
   const fromText = heuristicExtract("escribeme a a@b.com", {
     referenceDate: REF,

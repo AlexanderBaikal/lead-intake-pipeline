@@ -28,9 +28,15 @@ const SERVICE_PATTERNS: ReadonlyArray<[RegExp, ExtractedLead["service"]]> = [
   [/\b(suscri\w*|subscription|mensual\w*|monthly plan|plan mensual)\b/i, "subscription"],
   [/\b(detail\w*|pulido|encerado|wax|polish|ceramic)\b/i, "detailing"],
   [/\b(repar\w*|arregl\w*|repair|fix|abolladur\w*|dent|scratch|ray[oó]n)\b/i, "repair"],
-  [/\b(revis\w*|inspecci[oó]n|inspection|check-?up|diagn[oó]stico)\b/i, "inspection"],
+  [
+    /\b(revis\w*|inspecci[oó]n|inspection|check-?up|diagn[oó]stico|check[- ]?engine|engine light|luz del motor)\b/i,
+    "inspection",
+  ],
   [/\b(lav\w*|wash\w*|limpieza|clean\w*)\b/i, "wash"],
 ];
+
+/** A service word cancelled by the words right after it. */
+const NEGATION_FOLLOWS = /^[\s,]*(?:no|nope|not)\b/i;
 
 /**
  * The nouns a vehicle can be called, grouped by the type they resolve to.
@@ -126,25 +132,41 @@ const COUNT_IN_WORDS: ReadonlyArray<[RegExp, number]> = Object.entries(NUMBER_WO
   ([word, value]) => [new RegExp(`\\b${word}\\s+(?:${COUNTABLE})\\b`, "i"), value],
 );
 
-function detectCount(text: string): number {
+/**
+ * `distinctTypes` is a floor, not a guess. "un sedan y una camioneta" states a
+ * count of one twice and means two vehicles; the first `un` used to win and
+ * the enquiry went to the CRM as a single car. Naming N different types is
+ * evidence of at least N vehicles, and an explicit larger count still wins.
+ */
+function detectCount(text: string, distinctTypes: number): number {
+  const floor = Math.max(1, distinctTypes);
+
   const digits = COUNT_IN_DIGITS.exec(text);
   if (digits?.[1]) {
     const n = Number(digits[1]);
-    if (n >= 1 && n <= 50) return n;
+    if (n >= 1 && n <= 50) return Math.max(n, floor);
   }
 
   for (const [pattern, value] of COUNT_IN_WORDS) {
-    if (pattern.test(text)) return value;
+    if (pattern.test(text)) return Math.max(value, floor);
   }
 
   // No count stated is overwhelmingly one vehicle, not "unknown".
-  return 1;
+  return floor;
 }
+
+/**
+ * An ISO date carries enough digits and separators to satisfy the phone
+ * pattern, so "para el 2026-05-05" came back as the customer's phone number.
+ * Removed before the phone match, not after: the date is still read as a date
+ * by detectDate, which works on the original text.
+ */
+const ISO_DATE_ANYWHERE = /\b\d{4}-\d{2}-\d{2}\b/g;
 
 function detectContact(text: string): string | null {
   const email = /[\w.+-]+@[\w-]+\.[\w.]{2,}/.exec(text);
   if (email?.[0]) return email[0];
-  const phone = /(\+?\d[\d\s().-]{6,}\d)/.exec(text);
+  const phone = /(\+?\d[\d\s().-]{6,}\d)/.exec(text.replace(ISO_DATE_ANYWHERE, " "));
   if (phone?.[1]) return phone[1].trim();
   return null;
 }
@@ -186,10 +208,14 @@ export function heuristicExtract(
 
   let service: ExtractedLead["service"] = "other";
   for (const [re, value] of SERVICE_PATTERNS) {
-    if (re.test(text)) {
-      service = value;
-      break;
-    }
+    const match = re.exec(text);
+    if (!match) continue;
+    // "lavado mensual no, solo una vez" is a one-off wash, and matching
+    // `mensual` filed it as a subscription. A keyword the sender negates in
+    // the next breath is not a match, so keep looking.
+    if (NEGATION_FOLLOWS.test(text.slice(match.index + match[0].length))) continue;
+    service = value;
+    break;
   }
 
   const vehicleTypes: string[] = [];
@@ -214,7 +240,7 @@ export function heuristicExtract(
     customer_name: detectName(text),
     contact: detectContact(text) ?? options.contactHint ?? null,
     service,
-    vehicle_count: detectCount(text),
+    vehicle_count: detectCount(text, vehicleTypes.length),
     vehicle_types: vehicleTypes,
     requested_date: detectDate(text, reference),
     urgency,

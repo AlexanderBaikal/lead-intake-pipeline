@@ -5,6 +5,8 @@
     "reference_date": "2026-04-11",
     "text": "hola, necesito precio para lavado de 3 camionetas mañana temprano",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 3,
       "vehicle_types": ["pickup"],
@@ -51,6 +53,8 @@
     "reference_date": "2026-04-11",
     "text": "What does the monthly plan cost? I'd wash the car maybe twice a week.",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "subscription",
       "vehicle_count": 1,
       "vehicle_types": ["sedan"],
@@ -61,13 +65,15 @@
   },
   {
     "id": "es-today-email",
-    "note": "Email present in the body; 'hoy' pins both the date and the urgency.",
+    "note": "Email present in the body; 'hoy' pins both the date and the urgency. No vehicle is named, so the type list stays empty rather than guessing a sedan.",
     "reference_date": "2026-04-11",
     "text": "Buenas, quiero lavado hoy si se puede. escribanme a ana.mendez@correo.com",
     "expect": {
+      "customer_name": null,
       "contact": "ana.mendez@correo.com",
       "service": "wash",
       "vehicle_count": 1,
+      "vehicle_types": [],
       "requested_date": "2026-04-11",
       "urgency": "today",
       "language": "es"
@@ -75,12 +81,15 @@
   },
   {
     "id": "es-fleet-word-number",
-    "note": "Count written as a word, not a digit.",
+    "note": "Count written as a word, not a digit. 'vehiculos' is generic, so it counts without naming a type.",
     "reference_date": "2026-04-11",
     "text": "Somos una empresa, necesitamos lavado para cinco vehiculos el lunes",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 5,
+      "vehicle_types": [],
       "requested_date": "2026-04-13",
       "urgency": "this_week",
       "language": "es"
@@ -92,6 +101,8 @@
     "reference_date": "2026-04-11",
     "text": "somebody left a dent on my pickup in the parking lot. can you fix it?",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "repair",
       "vehicle_count": 1,
       "vehicle_types": ["pickup"],
@@ -102,13 +113,17 @@
   },
   {
     "id": "es-explicit-iso-date",
-    "note": "An explicit ISO date must beat any relative wording.",
+    "note": "An explicit ISO date must beat any relative wording — and must not also be read as a phone number, which is what the digits and hyphens used to do.",
     "reference_date": "2026-04-11",
     "text": "quiero agendar un pulido para el 2026-05-05, gracias",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "detailing",
       "vehicle_count": 1,
+      "vehicle_types": [],
       "requested_date": "2026-05-05",
+      "urgency": "flexible",
       "language": "es"
     }
   },
@@ -118,6 +133,8 @@
     "reference_date": "2026-04-11",
     "text": "Quote for washing 2 cars tomorrow please",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 2,
       "vehicle_types": ["sedan"],
@@ -132,22 +149,28 @@
     "reference_date": "2026-04-11",
     "text": "pasado mañana puedo llevar la moto para limpieza",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 1,
       "vehicle_types": ["motorcycle"],
       "requested_date": "2026-04-13",
+      "urgency": "this_week",
       "language": "es"
     }
   },
   {
     "id": "en-no-service-stated",
-    "note": "A vague enquiry: service is genuinely unknown and must read 'other'.",
+    "note": "A vague enquiry: service is genuinely unknown and must read 'other'. 'Sundays' is opening hours, not a booking, so the date stays null.",
     "reference_date": "2026-04-11",
     "text": "Hey, are you guys open on Sundays?",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "other",
       "vehicle_count": 1,
       "vehicle_types": [],
+      "requested_date": null,
       "urgency": "flexible",
       "language": "en"
     }
@@ -158,10 +181,13 @@
     "reference_date": "2026-04-11",
     "text": "necesito lavdo para mi camioneta manana",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 1,
       "vehicle_types": ["pickup"],
       "requested_date": "2026-04-12",
+      "urgency": "this_week",
       "language": "es"
     }
   },
@@ -176,27 +202,36 @@
       "service": "detailing",
       "vehicle_count": 1,
       "vehicle_types": ["van"],
+      "requested_date": null,
+      "urgency": "flexible",
       "language": "en"
     }
   },
   {
     "id": "es-mixed-fleet",
-    "note": "Two vehicle types in one enquiry.",
+    "note": "Two vehicle types in one enquiry. Each is introduced with 'un'/'una', so a count taken from the first article reads one vehicle; two named types mean at least two.",
     "reference_date": "2026-04-11",
     "text": "tengo un sedan y una camioneta, cuanto por lavar los dos?",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
+      "vehicle_count": 2,
       "vehicle_types": ["pickup", "sedan"],
+      "requested_date": null,
+      "urgency": "flexible",
       "language": "es"
     }
   },
   {
     "id": "en-asap",
-    "note": "'right now' is asap, and it also fixes the date to today.",
+    "note": "'right now' is asap, and it also fixes the date to today. A warning light is a diagnostic request, so the service is inspection rather than 'other'.",
     "reference_date": "2026-04-11",
     "text": "Can someone look at my car right now? Engine light is on.",
     "expect": {
-      "service": "other",
+      "customer_name": null,
+      "contact": null,
+      "service": "inspection",
       "vehicle_count": 1,
       "vehicle_types": ["sedan"],
       "requested_date": "2026-04-11",
@@ -210,9 +245,12 @@
     "reference_date": "2026-04-11",
     "text": "buenas, hacen encerado? mi auto lo necesita",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "detailing",
       "vehicle_count": 1,
       "vehicle_types": ["sedan"],
+      "requested_date": null,
       "urgency": "flexible",
       "language": "es"
     }
@@ -223,30 +261,40 @@
     "reference_date": "2026-04-11",
     "text": "Booking a check-up for the truck before a long trip",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "inspection",
       "vehicle_count": 1,
       "vehicle_types": ["pickup"],
+      "requested_date": null,
       "urgency": "flexible",
       "language": "en"
     }
   },
   {
     "id": "es-seven-cars",
-    "note": "Larger fleet, word form.",
+    "note": "Larger fleet, word form — and a negated keyword. 'lavado mensual no, solo una vez' is a one-off wash; matching 'mensual' filed it as a subscription.",
     "reference_date": "2026-04-11",
     "text": "cotizacion para siete carros de la flota, lavado mensual no, solo una vez",
     "expect": {
-      "service": "subscription",
+      "customer_name": null,
+      "contact": null,
+      "service": "wash",
       "vehicle_count": 7,
+      "vehicle_types": ["sedan"],
+      "requested_date": null,
+      "urgency": "flexible",
       "language": "es"
     }
   },
   {
     "id": "en-truncated",
-    "note": "A message cut off mid-sentence still has to produce a valid record.",
+    "note": "A message cut off mid-sentence still has to produce a valid record. 'tuesd' is not a weekday, so the date stays null.",
     "reference_date": "2026-04-11",
     "text": "hi i need my suv washed on tuesd",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "wash",
       "vehicle_count": 1,
       "vehicle_types": ["suv"],
@@ -261,6 +309,8 @@
     "reference_date": "2026-04-11",
     "text": "tengo un rayon en la puerta del carro, lo pueden arreglar el viernes?",
     "expect": {
+      "customer_name": null,
+      "contact": null,
       "service": "repair",
       "vehicle_count": 1,
       "vehicle_types": ["sedan"],

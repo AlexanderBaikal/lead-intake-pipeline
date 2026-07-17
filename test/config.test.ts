@@ -22,6 +22,15 @@ test("an unset environment yields the documented defaults", () => {
   assert.equal(config.crmWebhookUrl, null);
 });
 
+test("a blank variable means unset, not zero", () => {
+  // `.env.example` ships empty values and a shell exports "" for an unset
+  // variable; coercing those would give a port of 0 and a ceiling of $0.00.
+  const config = loadConfig({ PORT: "", BUDGET_CEILING_USD: "  ", CRM_WEBHOOK_URL: "" });
+  assert.equal(config.port, 3210);
+  assert.equal(config.budgetCeilingUsd, 5);
+  assert.equal(config.crmWebhookUrl, null);
+});
+
 test("a misspelled provider is rejected instead of falling back to mock", () => {
   // This is the bug the zod schema exists for: the old cast let `antropic`
   // through, ran the offline parser on every lead, and looked perfectly

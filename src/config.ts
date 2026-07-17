@@ -69,7 +69,14 @@ const Env = z
 export type Config = ReturnType<typeof loadConfig>;
 
 export function loadConfig(raw: NodeJS.ProcessEnv = process.env) {
-  const parsed = Env.safeParse(raw);
+  // A shell and `node --env-file` both deliver an unset variable as "", which
+  // would coerce to 0 or fail a URL check. Blank means absent, so the defaults
+  // above apply rather than a zero that looks deliberate.
+  const present = Object.fromEntries(
+    Object.entries(raw).filter(([, value]) => value?.trim()),
+  );
+
+  const parsed = Env.safeParse(present);
   if (!parsed.success) {
     throw new Error(`invalid environment:\n${z.prettifyError(parsed.error)}`);
   }

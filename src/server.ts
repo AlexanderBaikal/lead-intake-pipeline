@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import express from "express";
+import express, { type ErrorRequestHandler } from "express";
 
 import { currentSpend } from "./budget.js";
 import { config } from "./config.js";
@@ -104,6 +104,27 @@ app.get("/health", async (_req, res) => {
   res.json({ ok: true });
 });
 
+app.use((_req, res) => {
+  res.status(404).json({ error: "not_found" });
+});
+
+/**
+ * Express 5 forwards rejected handlers here. Without it they reach the default
+ * handler, which answers an API documented as JSON with an HTML stack trace.
+ */
+const onError: ErrorRequestHandler = (error, _req, res, _next) => {
+  // A body express could not parse is the caller's mistake, not ours.
+  if (error instanceof SyntaxError && "body" in error) {
+    res.status(400).json({ error: "invalid_json" });
+    return;
+  }
+  log.error("request failed", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  res.status(500).json({ error: "internal_error" });
+};
+app.use(onError);
+
 app.listen(config.port, () => {
-  log.info("intake listening", { port: config.port });
+  log.info("intake listening", { port: config.port, provider: config.llmProvider });
 });

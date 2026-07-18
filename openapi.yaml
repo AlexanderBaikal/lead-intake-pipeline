@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: Lead intake pipeline
+  version: 1.0.0
+  description: >
+    Accepts a free-text enquiry from any channel and returns immediately. The
+    lead is normalized and delivered asynchronously; poll GET /v1/leads/{id} to
+    watch it move through the pipeline.
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /v1/leads:
+    post:
+      summary: Submit an enquiry
+      description: >
+        Idempotent. Supply `Idempotency-Key` (or `idempotency_key`) when the
+        caller knows the delivery id; otherwise the server derives one from
+        channel + contact + text, which absorbs a duplicated webhook.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema: { type: string, minLength: 8, maxLength: 200 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadInput" }
+      responses:
+        "202":
+          description: Accepted and queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadAck" }
+        "200":
+          description: Duplicate — the existing lead is returned unchanged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadAck" }
+        "400":
+          description: >
+            Invalid request body, or an `Idempotency-Key` header that does not
+            meet the same length rules as the field.
+    get:
+      summary: List the 20 most recent leads
+      responses:
+        "200": { description: OK }
+
+  /v1/leads/{id}:
+    get:
+      summary: Fetch a lead with its pipeline steps
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Lead" }
+        "404": { description: Not found }
+
+  /v1/budget:
+    get:
+      summary: Rolling 24h model spend against the configured ceiling
+      responses:
+        "200": { description: OK }
+
+  /health:
+    get:
+      summary: Liveness plus a database round trip
+      responses:
+        "200": { description: OK }
+        "503": { description: Database unreachable }
+
+components:
+  schemas:
+    LeadInput:
+      type: object
+      required: [channel, text]
+      additionalProperties: false
+      properties:
+        channel:
+          type: string
+          enum: [web_form, whatsapp, email, instagram]
+        text:
+          type: string
+          minLength: 1
+          maxLength: 8000
+          description: Whatever the customer actually wrote, untouched.
+        contact:
+          type: string
+          maxLength: 200
+        idempotency_key:
+          type: string
+          minLength: 8
+          maxLength: 200
+
+    LeadAck:
+      type: object
+      required: [id, status, duplicate]
+      properties:
+        id: { type: integer }
+        status: { type: string }
+        duplicate: { type: boolean }
+
+    ExtractedLead:
+      type: object
+      required:
+        [
+          customer_name,
+          contact,
+          service,
+          vehicle_count,
+          vehicle_types,
+          requested_date,
+          urgency,
+          language,
+          notes,
+        ]
+      additionalProperties: false
+      properties:
+        customer_name: { type: [string, "null"] }
+        contact: { type: [string, "null"] }
+        service:
+          type: string
+          enum: [wash, detailing, repair, inspection, subscription, other]
+        vehicle_count: { type: integer, minimum: 1, maximum: 50 }
+        vehicle_types:
+          type: array
+          items: { type: string }
+        requested_date:
+          type: [string, "null"]
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        urgency:
+          type: string
+          enum: [asap, today, this_week, flexible]
+        language:
+          type: string
+          enum: [es, en, other]
+        notes: { type: string }
+
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        channel: { type: string }
+        raw_text: { type: string }
+        status:
+          type: string
+          enum: [queued, processing, done, failed]
+        extracted:
+          oneOf:
+            - { $ref: "#/components/schemas/ExtractedLead" }
+            - { type: "null" }
+        extraction_source:
+          type: [string, "null"]
+          description: >
+            `model` when the LLM produced the fields, `heuristic` when the
+            deterministic parser did (refusal, truncation, or budget ceiling).
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              ok: { type: boolean }
+              detail: { type: string }
+              ms: { type: integer }

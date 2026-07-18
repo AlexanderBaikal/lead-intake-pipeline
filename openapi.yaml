@@ -7,8 +7,12 @@ info:
     lead is normalized and delivered asynchronously; poll GET /v1/leads/{id} to
     watch it move through the pipeline.
 
+    This document is the contract, not a description of it — the request schema
+    here and the zod schema in src/schema.ts describe the same body, and a drift
+    check in CI fails the build when they disagree.
+
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:3210
 
 paths:
   /v1/leads:

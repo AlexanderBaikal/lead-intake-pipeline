@@ -32,7 +32,9 @@ export const LeadInput = z.object({
 export type LeadInput = z.infer<typeof LeadInput>;
 
 /**
- * The shape the CRM needs.
+ * The shape the CRM needs. This schema is handed to the model as a structured
+ * output format, so the model cannot return a different shape — the only
+ * failure left to handle is a refusal or a truncation, not a parse error.
  *
  * Every field is nullable on purpose: a lead that omits the date is normal,
  * and inventing one is worse than leaving it null for a human to fill.
@@ -46,7 +48,8 @@ export const ExtractedLead = z.object({
   requested_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
+    .nullable()
+    .describe("ISO date, resolved against the reference date given in the prompt"),
   urgency: z.enum(URGENCIES),
   language: z.enum(["es", "en", "other"]),
   notes: z.string(),

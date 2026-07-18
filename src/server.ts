@@ -1,3 +1,6 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import express from "express";
 
 import { currentSpend } from "./budget.js";
@@ -9,8 +12,10 @@ import { microToUsd } from "./pricing.js";
 import { enqueue } from "./queue.js";
 import { LeadInput } from "./schema.js";
 
+const here = dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "256kb" }));
+app.use(express.static(join(here, "..", "public")));
 
 app.post("/v1/leads", async (req, res) => {
   const parsed = LeadInput.safeParse(req.body);

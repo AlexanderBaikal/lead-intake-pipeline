@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lead intake pipeline</title>
+    <style>
+      body {
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        max-width: 44rem;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+      }
+      textarea {
+        width: 100%;
+        min-height: 6rem;
+        font: inherit;
+        padding: 0.5rem;
+      }
+      pre {
+        background: #f4f2ee;
+        padding: 1rem;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Lead intake pipeline</h1>
+    <p>Paste an enquiry the way a customer would write it.</p>
+
+    <form id="intake">
+      <textarea id="text" required>
+hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
+      <p>
+        <select id="channel">
+          <option value="whatsapp">whatsapp</option>
+          <option value="web_form">web_form</option>
+          <option value="email">email</option>
+          <option value="instagram">instagram</option>
+        </select>
+        <button type="submit">Send</button>
+      </p>
+    </form>
+
+    <pre id="out">…</pre>
+
+    <script type="module">
+      const out = document.getElementById("out");
+
+      document.getElementById("intake").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const response = await fetch("/v1/leads", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            channel: document.getElementById("channel").value,
+            text: document.getElementById("text").value,
+          }),
+        });
+        const ack = await response.json();
+        out.textContent = JSON.stringify(ack, null, 2);
+
+        // The worker takes a moment; poll until it stops moving.
+        for (let i = 0; i < 20; i += 1) {
+          await new Promise((r) => setTimeout(r, 400));
+          const lead = await (await fetch(`/v1/leads/${ack.id}`)).json();
+          out.textContent = JSON.stringify(lead, null, 2);
+          if (lead.status === "done" || lead.status === "failed") break;
+        }
+      });
+    </script>
+  </body>
+</html>

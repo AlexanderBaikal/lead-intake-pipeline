@@ -14,6 +14,7 @@ import { LeadInput } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const app = express();
+
 app.use(express.json({ limit: "256kb" }));
 app.use(express.static(join(here, "..", "public")));
 
@@ -65,7 +66,17 @@ app.post("/v1/leads", async (req, res) => {
 });
 
 app.get("/v1/leads/:id", async (req, res) => {
-  const lead = await pool.query(`SELECT * FROM leads WHERE id = $1`, [req.params.id]);
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ error: "invalid_id" });
+    return;
+  }
+
+  const lead = await pool.query(
+    `SELECT id, channel, raw_text, status, extracted, extraction_source, received_at, completed_at
+       FROM leads WHERE id = $1`,
+    [id],
+  );
   if (lead.rowCount === 0) {
     res.status(404).json({ error: "not_found" });
     return;
@@ -73,7 +84,7 @@ app.get("/v1/leads/:id", async (req, res) => {
 
   const steps = await pool.query(
     `SELECT name, ok, detail, ms, created_at FROM steps WHERE lead_id = $1 ORDER BY id`,
-    [req.params.id],
+    [id],
   );
 
   res.json({ ...lead.rows[0], steps: steps.rows });
@@ -100,8 +111,12 @@ app.get("/v1/budget", async (_req, res) => {
 });
 
 app.get("/health", async (_req, res) => {
-  await pool.query("SELECT 1");
-  res.json({ ok: true });
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: String(error) });
+  }
 });
 
 app.use((_req, res) => {
@@ -125,6 +140,18 @@ const onError: ErrorRequestHandler = (error, _req, res, _next) => {
 };
 app.use(onError);
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   log.info("intake listening", { port: config.port, provider: config.llmProvider });
 });
+
+// Stop accepting connections, let in-flight requests finish, then release the
+// pool — the same contract the worker honours, so a deploy drains both ends.
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    log.info("draining, will exit when in-flight requests finish");
+    server.close(async () => {
+      await pool.end();
+      log.info("intake stopped");
+    });
+  });
+}

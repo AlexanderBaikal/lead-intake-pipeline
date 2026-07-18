@@ -8,11 +8,19 @@ const RECLAIM_EVERY_MS = 30_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-log.info("worker started");
+let running = true;
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    log.info("draining, will exit after the current job");
+    running = false;
+  });
+}
 
 let lastReclaim = 0;
 
-for (;;) {
+log.info("worker started");
+
+while (running) {
   if (Date.now() - lastReclaim > RECLAIM_EVERY_MS) {
     lastReclaim = Date.now();
     const reclaimed = await reclaimStale();
@@ -25,10 +33,15 @@ for (;;) {
     continue;
   }
 
+  const started = Date.now();
   try {
     await processLead(job.lead_id);
     await completeJob(job.id);
-    log.info("lead processed", { leadId: job.lead_id });
+    log.info("lead processed", {
+      leadId: job.lead_id,
+      attempt: job.attempts,
+      ms: Date.now() - started,
+    });
   } catch (error) {
     const outcome = await failJob(job, error);
     log.error("lead failed", {
@@ -41,3 +54,4 @@ for (;;) {
 }
 
 await pool.end();
+log.info("worker stopped");

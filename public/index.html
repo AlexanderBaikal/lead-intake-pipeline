@@ -3,72 +3,351 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lead intake pipeline</title>
+    <title>Lead intake pipeline — live demo</title>
     <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfaf7;
+        --panel: #ffffff;
+        --ink: #1b1a17;
+        --muted: #6d6a63;
+        --line: #e4e0d8;
+        --accent: #b4562a;
+        --ok: #2f7d4f;
+        --bad: #b23b3b;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161513;
+          --panel: #1f1e1b;
+          --ink: #f0ede6;
+          --muted: #a09b91;
+          --line: #322f2a;
+          --accent: #e0824f;
+          --ok: #6bbf8d;
+          --bad: #e0716f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
+        margin: 0;
+        padding: 2.5rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.6 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 46rem;
         margin: 0 auto;
-        padding: 2rem 1rem;
-        max-width: 44rem;
-        font-family: system-ui, sans-serif;
-        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 0.35rem;
+        letter-spacing: -0.01em;
+      }
+      p.lede {
+        margin: 0 0 2rem;
+        color: var(--muted);
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.82rem;
+        margin-bottom: 0.4rem;
+      }
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.6rem 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--bg);
+        color: var(--ink);
+        font: inherit;
       }
       textarea {
-        width: 100%;
-        min-height: 6rem;
+        min-height: 5.5rem;
+        resize: vertical;
+        font-family: var(--mono);
+        font-size: 0.86rem;
+      }
+      .row {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-end;
+        margin-top: 0.9rem;
+        flex-wrap: wrap;
+      }
+      .row > div {
+        flex: 1 1 12rem;
+      }
+      button {
+        padding: 0.6rem 1.1rem;
+        border: 0;
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
         font: inherit;
-        padding: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .samples {
+        margin-top: 0.8rem;
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+      .samples button {
+        background: transparent;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        font-weight: 500;
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+      }
+      h2 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin: 0 0 0.8rem;
+      }
+      ol.steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      ol.steps li {
+        display: flex;
+        gap: 0.7rem;
+        align-items: baseline;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.88rem;
+      }
+      ol.steps li:last-child {
+        border-bottom: 0;
+      }
+      .mark {
+        font-family: var(--mono);
+        font-weight: 700;
+      }
+      .mark.ok {
+        color: var(--ok);
+      }
+      .mark.bad {
+        color: var(--bad);
+      }
+      .mark.pending {
+        color: var(--muted);
+      }
+      .name {
+        font-family: var(--mono);
+        min-width: 8.5rem;
+      }
+      .detail {
+        color: var(--muted);
+        flex: 1;
+      }
+      .ms {
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.78rem;
       }
       pre {
-        background: #f4f2ee;
-        padding: 1rem;
+        margin: 0;
+        padding: 0.9rem;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 7px;
         overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+      }
+      .meta {
+        display: flex;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-top: 0.9rem;
+      }
+      .hidden {
+        display: none;
+      }
+      footer {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-top: 2rem;
+      }
+      a {
+        color: var(--accent);
       }
     </style>
   </head>
   <body>
-    <h1>Lead intake pipeline</h1>
-    <p>Paste an enquiry the way a customer would write it.</p>
-
-    <form id="intake">
-      <textarea id="text" required>
-hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
-      <p>
-        <select id="channel">
-          <option value="whatsapp">whatsapp</option>
-          <option value="web_form">web_form</option>
-          <option value="email">email</option>
-          <option value="instagram">instagram</option>
-        </select>
-        <button type="submit">Send</button>
+    <main>
+      <h1>Lead intake pipeline</h1>
+      <p class="lede">
+        Paste an enquiry the way a customer would actually write it — Spanish or English,
+        no structure. Watch it come out the other side as a CRM record.
       </p>
-    </form>
 
-    <pre id="out">…</pre>
+      <form class="card" id="form">
+        <label for="text">Inbound enquiry</label>
+        <textarea id="text" required>
+hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
+        <div class="samples" id="samples"></div>
+        <div class="row">
+          <div>
+            <label for="channel">Channel</label>
+            <select id="channel">
+              <option value="whatsapp">whatsapp</option>
+              <option value="web_form">web_form</option>
+              <option value="email">email</option>
+              <option value="instagram">instagram</option>
+            </select>
+          </div>
+          <button type="submit" id="submit">Send</button>
+        </div>
+      </form>
+
+      <section class="card hidden" id="result">
+        <h2>Pipeline</h2>
+        <ol class="steps" id="steps"></ol>
+        <div class="meta" id="meta"></div>
+      </section>
+
+      <section class="card hidden" id="output">
+        <h2>Record written to the CRM</h2>
+        <pre id="json"></pre>
+      </section>
+
+      <footer>
+        Same enquiry twice gives you the same lead id — the intake endpoint is idempotent.
+        <span id="budget"></span>
+      </footer>
+    </main>
 
     <script type="module">
-      const out = document.getElementById("out");
+      const SAMPLES = [
+        "hola, necesito precio para lavado de 3 camionetas mañana temprano",
+        "Hi, my name is David Cole. Need a full detail on my SUV this Friday, phone 6123-4455",
+        "URGENTE necesito que me revisen el carro, hace un ruido raro. me llamo Carlos",
+        "somebody left a dent on my pickup in the parking lot. can you fix it?",
+      ];
 
-      document.getElementById("intake").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const response = await fetch("/v1/leads", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            channel: document.getElementById("channel").value,
-            text: document.getElementById("text").value,
+      const $ = (id) => document.getElementById(id);
+      const STEP_ORDER = ["extract", "deliver_crm", "notify"];
+
+      for (const sample of SAMPLES) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = sample.length > 42 ? sample.slice(0, 42) + "…" : sample;
+        button.title = sample;
+        button.onclick = () => ($("text").value = sample);
+        $("samples").append(button);
+      }
+
+      function renderSteps(steps, status) {
+        const byName = new Map(steps.map((step) => [step.name, step]));
+        $("steps").replaceChildren(
+          ...STEP_ORDER.map((name) => {
+            const step = byName.get(name);
+            const li = document.createElement("li");
+            const mark = document.createElement("span");
+            mark.className = "mark " + (!step ? "pending" : step.ok ? "ok" : "bad");
+            mark.textContent = !step ? "·" : step.ok ? "✓" : "✕";
+            const label = document.createElement("span");
+            label.className = "name";
+            label.textContent = name;
+            const detail = document.createElement("span");
+            detail.className = "detail";
+            detail.textContent =
+              step?.detail ?? (status === "failed" ? "skipped" : "waiting…");
+            const ms = document.createElement("span");
+            ms.className = "ms";
+            ms.textContent = step ? `${step.ms} ms` : "";
+            li.append(mark, label, detail, ms);
+            return li;
           }),
-        });
-        const ack = await response.json();
-        out.textContent = JSON.stringify(ack, null, 2);
+        );
+      }
 
-        // The worker takes a moment; poll until it stops moving.
-        for (let i = 0; i < 20; i += 1) {
-          await new Promise((r) => setTimeout(r, 400));
-          const lead = await (await fetch(`/v1/leads/${ack.id}`)).json();
-          out.textContent = JSON.stringify(lead, null, 2);
-          if (lead.status === "done" || lead.status === "failed") break;
+      async function poll(id) {
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          const lead = await fetch(`/v1/leads/${id}`).then((r) => r.json());
+          renderSteps(lead.steps ?? [], lead.status);
+          $("meta").textContent =
+            `lead #${lead.id} · ${lead.channel} · ${lead.status}` +
+            (lead.extraction_source ? ` · parsed by ${lead.extraction_source}` : "");
+          if (lead.extracted) {
+            $("output").classList.remove("hidden");
+            $("json").textContent = JSON.stringify(lead.extracted, null, 2);
+          }
+          if (lead.status === "done" || lead.status === "failed") return;
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+      }
+
+      async function refreshBudget() {
+        try {
+          const budget = await fetch("/v1/budget").then((r) => r.json());
+          $("budget").textContent =
+            budget.provider === "mock"
+              ? "Running on the deterministic parser (no API key set)."
+              : `Model spend today: $${budget.spent_usd} of $${budget.ceiling_usd}.`;
+        } catch {
+          /* the footer is decoration; a failure here must not break the demo */
+        }
+      }
+
+      $("form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        $("submit").disabled = true;
+        $("result").classList.remove("hidden");
+        $("output").classList.add("hidden");
+        renderSteps([], "queued");
+        try {
+          const response = await fetch("/v1/leads", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              channel: $("channel").value,
+              text: $("text").value,
+            }),
+          });
+          const ack = await response.json();
+          if (!response.ok) throw new Error(ack.error ?? "request failed");
+          await poll(ack.id);
+          await refreshBudget();
+        } catch (error) {
+          $("meta").textContent = String(error);
+        } finally {
+          $("submit").disabled = false;
         }
       });
+
+      refreshBudget();
     </script>
   </body>
 </html>

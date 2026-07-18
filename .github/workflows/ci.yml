@@ -18,3 +18,9 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
+      # Runs against the deterministic parser, so it needs no API key and no
+      # database. A prompt or parser change that regresses extraction fails
+      # here instead of in someone's CRM.
+      - run: npm run eval
+        env:
+          LLM_PROVIDER: mock

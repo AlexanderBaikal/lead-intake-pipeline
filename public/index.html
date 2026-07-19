@@ -6,42 +6,36 @@
     <title>Lead intake pipeline — live demo</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #fbfaf7;
-        --panel: #ffffff;
-        --ink: #1b1a17;
-        --muted: #6d6a63;
-        --line: #e4e0d8;
-        --accent: #b4562a;
-        --ok: #2f7d4f;
-        --bad: #b23b3b;
+        color-scheme: light;
+        --bg: #f5f4f0;
+        --surface: #fff;
+        --surface-hover: #f7f6f2;
+        --text: #1a1917;
+        --text-secondary: #5c5a55;
+        --muted: #908c86;
+        --border: #e3e0d9;
+        --border-light: #edeae4;
+        --primary: #1a1917;
+        --primary-hover: #2c2b28;
+        --ok: #2e7d32;
+        --bad: #c62828;
         --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #161513;
-          --panel: #1f1e1b;
-          --ink: #f0ede6;
-          --muted: #a09b91;
-          --line: #322f2a;
-          --accent: #e0824f;
-          --ok: #6bbf8d;
-          --bad: #e0716f;
-        }
+        --radius: 4px;
       }
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        padding: 2.5rem 1.25rem 4rem;
+        padding: 32px 20px 56px;
         background: var(--bg);
-        color: var(--ink);
+        color: var(--text);
         font:
-          15px/1.6 ui-sans-serif,
-          system-ui,
+          14px/1.55 ui-sans-serif,
           -apple-system,
+          BlinkMacSystemFont,
           "Segoe UI",
+          Roboto,
           sans-serif;
       }
       main {
@@ -49,87 +43,106 @@
         margin: 0 auto;
       }
       h1 {
-        font-size: 1.5rem;
-        margin: 0 0 0.35rem;
-        letter-spacing: -0.01em;
+        font-size: 19px;
+        font-weight: 600;
+        margin: 0 0 4px;
       }
       p.lede {
-        margin: 0 0 2rem;
-        color: var(--muted);
+        margin: 0 0 20px;
+        color: var(--text-secondary);
+        font-size: 13px;
       }
       .card {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-bottom: 1.25rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 14px;
       }
       label {
         display: block;
         font-weight: 600;
-        font-size: 0.82rem;
-        margin-bottom: 0.4rem;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
       }
       textarea,
       select {
         width: 100%;
-        padding: 0.6rem 0.7rem;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        background: var(--bg);
-        color: var(--ink);
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        background: var(--surface);
+        color: var(--text);
         font: inherit;
+        font-size: 13px;
+        outline: none;
+      }
+      textarea:focus,
+      select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(26, 25, 23, 0.08);
       }
       textarea {
-        min-height: 5.5rem;
+        min-height: 4.5rem;
         resize: vertical;
         font-family: var(--mono);
-        font-size: 0.86rem;
       }
       .row {
         display: flex;
-        gap: 0.75rem;
+        gap: 10px;
         align-items: flex-end;
-        margin-top: 0.9rem;
+        margin-top: 12px;
         flex-wrap: wrap;
       }
       .row > div {
         flex: 1 1 12rem;
       }
       button {
-        padding: 0.6rem 1.1rem;
+        height: 32px;
+        padding: 0 14px;
         border: 0;
-        border-radius: 7px;
-        background: var(--accent);
+        border-radius: 3px;
+        background: var(--primary);
         color: #fff;
         font: inherit;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
       }
+      button:hover {
+        background: var(--primary-hover);
+      }
       button:disabled {
-        opacity: 0.55;
+        opacity: 0.5;
         cursor: default;
       }
       .samples {
-        margin-top: 0.8rem;
+        margin-top: 10px;
         display: flex;
-        gap: 0.4rem;
+        gap: 6px;
         flex-wrap: wrap;
       }
       .samples button {
+        height: auto;
         background: transparent;
-        color: var(--muted);
-        border: 1px dashed var(--line);
-        font-weight: 500;
-        font-size: 0.8rem;
-        padding: 0.3rem 0.6rem;
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+        font-weight: 400;
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+      .samples button:hover {
+        background: var(--surface-hover);
+        border-color: var(--muted);
       }
       h2 {
-        font-size: 0.8rem;
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--muted);
-        margin: 0 0 0.8rem;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin: 0 0 10px;
       }
       ol.steps {
         list-style: none;
@@ -138,11 +151,11 @@
       }
       ol.steps li {
         display: flex;
-        gap: 0.7rem;
+        gap: 10px;
         align-items: baseline;
-        padding: 0.45rem 0;
-        border-bottom: 1px solid var(--line);
-        font-size: 0.88rem;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border-light);
+        font-size: 13px;
       }
       ol.steps li:last-child {
         border-bottom: 0;
@@ -165,42 +178,47 @@
         min-width: 8.5rem;
       }
       .detail {
-        color: var(--muted);
+        color: var(--text-secondary);
         flex: 1;
       }
       .ms {
         color: var(--muted);
         font-family: var(--mono);
-        font-size: 0.78rem;
+        font-size: 12px;
       }
       pre {
         margin: 0;
-        padding: 0.9rem;
+        padding: 12px;
         background: var(--bg);
-        border: 1px solid var(--line);
-        border-radius: 7px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
         overflow-x: auto;
         font-family: var(--mono);
-        font-size: 0.82rem;
+        font-size: 12.5px;
       }
       .meta {
         display: flex;
-        gap: 1.25rem;
+        gap: 16px;
         flex-wrap: wrap;
-        color: var(--muted);
-        font-size: 0.82rem;
-        margin-top: 0.9rem;
+        color: var(--text-secondary);
+        font-family: var(--mono);
+        font-size: 12px;
+        margin-top: 12px;
       }
       .hidden {
         display: none;
       }
       footer {
         color: var(--muted);
-        font-size: 0.82rem;
-        margin-top: 2rem;
+        font-size: 12px;
+        margin-top: 20px;
       }
       a {
-        color: var(--accent);
+        color: var(--text);
+        text-underline-offset: 2px;
+      }
+      a:hover {
+        color: var(--muted);
       }
     </style>
   </head>
@@ -215,7 +233,7 @@
       <form class="card" id="form">
         <label for="text">Inbound enquiry</label>
         <textarea id="text" required>
-hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
+Hi, my name is David Cole. Need a full detail on my SUV this Friday, phone 6123-4455</textarea>
         <div class="samples" id="samples"></div>
         <div class="row">
           <div>
@@ -244,7 +262,9 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
       </section>
 
       <section class="card hidden" id="output">
-        <h2>Record written to the CRM</h2>
+        <!-- Wording is set from the lead's status: on a held lead nothing has
+             been written yet, and saying otherwise contradicts the card above. -->
+        <h2 id="outputTitle">Record written to the CRM</h2>
         <pre id="json"></pre>
       </section>
 
@@ -258,11 +278,14 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
     </main>
 
     <script type="module">
+      // English first: it is what most readers of this demo will try. The two
+      // Spanish ones stay because handling them is the point — the extractor is
+      // here precisely because enquiries arrive in either language, misspelled.
       const SAMPLES = [
-        "hola, necesito precio para lavado de 3 camionetas mañana temprano",
         "Hi, my name is David Cole. Need a full detail on my SUV this Friday, phone 6123-4455",
-        "URGENTE necesito que me revisen el carro, hace un ruido raro. me llamo Carlos",
         "somebody left a dent on my pickup in the parking lot. can you fix it?",
+        "hola, necesito precio para lavado de 3 camionetas mañana temprano",
+        "URGENTE necesito que me revisen el carro, hace un ruido raro. me llamo Carlos",
       ];
 
       const $ = (id) => document.getElementById(id);
@@ -316,6 +339,10 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
             (lead.extraction_source ? ` · parsed by ${lead.extraction_source}` : "");
           if (lead.extracted) {
             $("output").classList.remove("hidden");
+            $("outputTitle").textContent =
+              lead.status === "done"
+                ? "Record written to the CRM"
+                : "Record it would write — not delivered yet";
             $("json").textContent = JSON.stringify(lead.extracted, null, 2);
           }
           if (lead.status === "needs_review") {

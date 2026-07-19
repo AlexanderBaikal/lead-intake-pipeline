@@ -11,9 +11,16 @@ CREATE TABLE IF NOT EXISTS leads (
   status          text        NOT NULL DEFAULT 'queued',
   extracted       jsonb,
   extraction_source text,
+  -- What the last run could not answer on its own. Stored rather than
+  -- recomputed, so the queue shows what the machine actually thought at the
+  -- time instead of what today's rules would say about yesterday's lead.
+  review_flags    jsonb,
   received_at     timestamptz NOT NULL DEFAULT now(),
   completed_at    timestamptz
 );
+
+-- For databases created before the review layer existed.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS review_flags jsonb;
 
 CREATE TABLE IF NOT EXISTS jobs (
   id          bigserial PRIMARY KEY,
@@ -57,6 +64,29 @@ CREATE TABLE IF NOT EXISTS llm_calls (
 );
 
 CREATE INDEX IF NOT EXISTS llm_calls_created_idx ON llm_calls (created_at);
+
+-- What a person ruled on, one row per (lead, field).
+--
+-- `machine_value` is kept beside `value` because the two together are the only
+-- honest way to measure the extractor: agreement is how often a human left the
+-- machine's answer alone, and that question cannot be asked of a table that
+-- overwrote the machine's answer with the human's.
+--
+-- A 'rejected' row is a tombstone. Without it, re-processing a lead would put
+-- back the value a person deleted — the machine finds it again every time, and
+-- deletion that does not survive the next run is not deletion.
+CREATE TABLE IF NOT EXISTS review_decisions (
+  id            bigserial PRIMARY KEY,
+  lead_id       bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  field         text        NOT NULL,
+  verdict       text        NOT NULL CHECK (verdict IN ('accepted', 'corrected', 'rejected')),
+  machine_value jsonb,
+  value         jsonb,
+  decided_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (lead_id, field)
+);
+
+CREATE INDEX IF NOT EXISTS review_decisions_field_idx ON review_decisions (field);
 
 -- Stands in for the CRM and the notifier when no webhook URL is configured,
 -- so the demo has somewhere real to deliver to.

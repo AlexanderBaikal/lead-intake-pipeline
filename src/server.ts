@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import express, { type ErrorRequestHandler } from "express";
 
+import { agreementByField, promotionRules } from "./agreement.js";
 import { currentSpend } from "./budget.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
@@ -10,6 +11,14 @@ import { resolveKey } from "./idempotency.js";
 import { log } from "./logger.js";
 import { microToUsd } from "./pricing.js";
 import { enqueue } from "./queue.js";
+import {
+  checkMerged,
+  DecisionInput,
+  mergeDecisions,
+  pendingReviews,
+  reviewDetail,
+  saveDecisions,
+} from "./review.js";
 import { LeadInput } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,7 +82,8 @@ app.get("/v1/leads/:id", async (req, res) => {
   }
 
   const lead = await pool.query(
-    `SELECT id, channel, raw_text, status, extracted, extraction_source, received_at, completed_at
+    `SELECT id, channel, raw_text, status, extracted, extraction_source, review_flags,
+            received_at, completed_at
        FROM leads WHERE id = $1`,
     [id],
   );
@@ -96,6 +106,79 @@ app.get("/v1/leads", async (_req, res) => {
        FROM leads ORDER BY id DESC LIMIT 20`,
   );
   res.json({ leads: rows });
+});
+
+app.get("/v1/review", async (_req, res) => {
+  res.json({ leads: await pendingReviews() });
+});
+
+/**
+ * Declared above `/v1/review/:id` on purpose. Express matches in order, and a
+ * parameter route placed first would swallow the word "agreement".
+ */
+app.get("/v1/review/agreement", async (_req, res) => {
+  res.json({
+    threshold: promotionRules.threshold,
+    min_decisions: promotionRules.minDecisions,
+    fields: await agreementByField(),
+  });
+});
+
+app.get("/v1/review/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ error: "invalid_id" });
+    return;
+  }
+
+  const detail = await reviewDetail(id);
+  if (!detail) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json(detail);
+});
+
+app.post("/v1/review/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ error: "invalid_id" });
+    return;
+  }
+
+  const parsed = DecisionInput.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_request", detail: parsed.error.issues });
+    return;
+  }
+
+  const detail = await reviewDetail(id);
+  if (!detail) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if (detail.status !== "needs_review" || !detail.extracted) {
+    res.status(409).json({ error: "not_awaiting_review", status: detail.status });
+    return;
+  }
+
+  // A correction typed by a person goes through the same contract the model's
+  // output does. Refusing it here is the difference between a bad value being
+  // caught by us and being caught by the CRM.
+  const merged = checkMerged(mergeDecisions(detail.extracted, parsed.data.decisions));
+  if (!merged.success) {
+    res.status(400).json({ error: "invalid_value", detail: merged.error.issues });
+    return;
+  }
+
+  await saveDecisions(id, parsed.data.decisions, detail.extracted);
+
+  // Back through the pipeline rather than delivered from here: the gate runs
+  // again with these decisions settled, so a field the person left open still
+  // holds the lead, and there stays exactly one path to the CRM.
+  await enqueue(id);
+
+  res.status(202).json({ id, status: "queued", extracted: merged.data });
 });
 
 app.get("/v1/budget", async (_req, res) => {

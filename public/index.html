@@ -237,6 +237,12 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
         <div class="meta" id="meta"></div>
       </section>
 
+      <section class="card hidden" id="held">
+        <h2>Held for a person</h2>
+        <p id="heldWhy"></p>
+        <p><a id="heldLink" href="/review.html">Answer it in the review queue →</a></p>
+      </section>
+
       <section class="card hidden" id="output">
         <h2>Record written to the CRM</h2>
         <pre id="json"></pre>
@@ -245,6 +251,9 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
       <footer>
         Same enquiry twice gives you the same lead id — the intake endpoint is idempotent.
         <span id="budget"></span>
+        <br />
+        <a href="/review.html">Review queue</a> — what the pipeline would not answer on
+        its own, and how often a person agreed with it.
       </footer>
     </main>
 
@@ -257,7 +266,7 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
       ];
 
       const $ = (id) => document.getElementById(id);
-      const STEP_ORDER = ["extract", "deliver_crm", "notify"];
+      const STEP_ORDER = ["extract", "review_gate", "deliver_crm", "notify"];
 
       for (const sample of SAMPLES) {
         const button = document.createElement("button");
@@ -283,7 +292,12 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
             const detail = document.createElement("span");
             detail.className = "detail";
             detail.textContent =
-              step?.detail ?? (status === "failed" ? "skipped" : "waiting…");
+              step?.detail ??
+              (status === "failed"
+                ? "skipped"
+                : status === "needs_review"
+                  ? "held until a person answers"
+                  : "waiting…");
             const ms = document.createElement("span");
             ms.className = "ms";
             ms.textContent = step ? `${step.ms} ms` : "";
@@ -304,6 +318,15 @@ hola, necesito precio para lavado de 3 camionetas mañana temprano</textarea>
             $("output").classList.remove("hidden");
             $("json").textContent = JSON.stringify(lead.extracted, null, 2);
           }
+          if (lead.status === "needs_review") {
+            $("held").classList.remove("hidden");
+            $("heldWhy").textContent = (lead.review_flags ?? [])
+              .map((flag) => `${flag.field} — ${flag.note}`)
+              .join(" · ");
+            $("heldLink").href = `/review.html#${lead.id}`;
+            return;
+          }
+          $("held").classList.add("hidden");
           if (lead.status === "done" || lead.status === "failed") return;
           await new Promise((resolve) => setTimeout(resolve, 400));
         }

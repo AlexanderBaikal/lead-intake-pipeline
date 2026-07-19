@@ -19,6 +19,8 @@ POST /v1/leads ──▶ leads (idempotent insert) ──▶ jobs
               extract ────────────────────────────┤  structured output,
               (LLM, or the deterministic parser)   │  deterministic fallback
                                                   │
+              review_gate ────────────────────────┤  holds the lead if a person
+                                                  │  has to answer something
               deliver_crm ──────────────────────── │  token bucket, 60/min
                                                   │
               notify ─────────────────────────────┘  one message per lead
@@ -37,11 +39,13 @@ npm start                     # http://localhost:3210
 npm run worker                # in a second terminal
 ```
 
-Open <http://localhost:3210>, send an enquiry and watch the steps resolve. To
-use a real model instead, set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
+Open <http://localhost:3210>, send an enquiry and watch the steps resolve. Send
+one with no phone number in it and it stops for a person instead — answer it at
+<http://localhost:3210/review.html>. To use a real model, set
+`LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
 
 ```bash
-npm test        # 40 unit tests, no database needed
+npm test        # 60 unit tests, no database needed
 npm run eval    # 20 saved enquiries scored field by field
 npm run typecheck
 ```
@@ -99,6 +103,57 @@ against the business calendar instead (`src/time.ts`). I found this by running
 the thing end to end, not by reading the code. There's a regression test in
 `test/time.test.ts`.
 
+## Leads that stop for a person
+
+Some leads can't be finished automatically. Three cases get held:
+
+- No phone and no email anywhere in the message. The CRM record would have no
+  way to reply.
+- The service came out as `other`. The CRM routes on that field, so someone has
+  to pick one.
+- The date came out earlier than the day the message arrived. That's "el lunes"
+  resolved against the wrong week.
+
+If a model produced the fields, the deterministic parser reads the same text as
+a second opinion. Where the two disagree on service, urgency, date or vehicle
+count, the lead is held as well. Disagreements about the customer's name are
+ignored — the parser misses names constantly and it doesn't change where the
+lead goes.
+
+The model is never asked how confident it is. It reports confidence in the
+cases where it's wrong, so the number doesn't help.
+
+A held lead stops before delivery, not after it. Nothing is written to
+`deliveries` until someone answers. The queue is at `/review.html`.
+
+### Decisions have to survive the next run
+
+Every decision is stored per field in `review_decisions`, including rejections.
+
+That matters the next time the same lead is processed — a retry, or a re-run
+after the text was updated. Extraction finds the same value it found before,
+and with nothing recorded it would go straight back into the record. Decisions
+are merged on top of whatever extraction just produced, so a rejected field
+comes out empty every time. There's a test for exactly that: reject the
+contact, add a phone number to the text, re-run, the field stays empty.
+
+Corrections go through the same schema the model's output does, so typing `0`
+into `vehicle_count` gets a 400 instead of a broken CRM record.
+
+Only nullable fields can be rejected outright. `service`, `urgency` and
+`vehicle_count` have no empty value in the contract, so a wrong one has to be
+corrected. That's the schema deciding, not a rule I invented.
+
+### The queue measures the extractor
+
+Every decision is a labelled example for free: the machine proposed something
+and a person either kept it or didn't. `/v1/review/agreement` reports, per
+field, how often it was kept.
+
+Once a field has been kept 95% of the time over at least 20 decisions, it stops
+being held. Both numbers are configurable and both are needed — three lucky
+calls in a row aren't evidence. Fields people keep correcting keep coming back.
+
 ## Worth a look
 
 | Path | Why |
@@ -107,6 +162,8 @@ the thing end to end, not by reading the code. There's a regression test in
 | `src/budget.ts` | The pre-flight cost check and the ledger behind it. |
 | `src/llm/anthropic.ts` | Structured output via the response schema, refusal and truncation handling, and the prompt ordered stable-part-first so the cached prefix survives. |
 | `src/llm/heuristic.ts` | The deterministic parser. Doubles as the offline provider and the production fallback. |
+| `src/review.ts` | What gets held and why, and how a person's decision is merged back over the next extraction. |
+| `src/agreement.ts` | How often people kept the machine's answer, and when a field stops being held. |
 | `src/idempotency.ts` | Which key a delivery dedups on, and why the parts are joined on NUL. |
 | `src/server.ts` | The idempotent insert. |
 | `src/time.ts` | Sixty lines on what a date is and why it isn't a timestamp. |

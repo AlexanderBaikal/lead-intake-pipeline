@@ -1,3 +1,4 @@
+import { autoAcceptedFields } from "./agreement.js";
 import { canAfford, recordCall } from "./budget.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
@@ -5,14 +6,19 @@ import { heuristicExtract } from "./llm/heuristic.js";
 import { getProvider } from "./llm/index.js";
 import { log } from "./logger.js";
 import { microToUsd } from "./pricing.js";
+import { decisionsFor, mergeDecisions, openQuestions } from "./review.js";
 import type { ExtractedLead } from "./schema.js";
 import { deliverToCrm, notify } from "./sinks.js";
+import { localDateISO } from "./time.js";
 
 interface LeadRow {
   id: number;
   channel: string;
   raw_text: string;
   contact_hint: string | null;
+  status: string;
+  extracted: ExtractedLead | null;
+  extraction_source: string | null;
   received_at: Date;
 }
 
@@ -121,7 +127,9 @@ async function extract(lead: LeadRow): Promise<Extraction> {
 
 export async function processLead(leadId: number): Promise<void> {
   const { rows } = await pool.query<LeadRow>(
-    `SELECT id, channel, raw_text, contact_hint, received_at FROM leads WHERE id = $1`,
+    `SELECT id, channel, raw_text, contact_hint, status, extracted, extraction_source,
+            received_at
+       FROM leads WHERE id = $1`,
     [leadId],
   );
   const lead = rows[0];
@@ -129,15 +137,69 @@ export async function processLead(leadId: number): Promise<void> {
 
   await pool.query(`UPDATE leads SET status = 'processing' WHERE id = $1`, [leadId]);
 
-  const { extracted, source } = await step(leadId, "extract", async () => {
-    const outcome = await extract(lead);
-    return { result: outcome, detail: outcome.detail };
-  });
+  // A lead coming back from review has already been extracted. Re-running the
+  // model would spend money to produce the same answer a person just ruled on.
+  const returning = lead.status === "needs_review" && lead.extracted !== null;
+
+  const { extracted: machine, source } = returning
+    ? { extracted: lead.extracted!, source: lead.extraction_source ?? "unknown" }
+    : await step(leadId, "extract", async () => {
+        const outcome = await extract(lead);
+        return { result: outcome, detail: outcome.detail };
+      });
+
+  // Human decisions go on top of whatever the extractor produced — including a
+  // fresh extraction on a re-run, which is the case that makes the tombstones
+  // in `review_decisions` load bearing rather than decorative.
+  const decisions = await decisionsFor(leadId);
+  const extracted = mergeDecisions(machine, decisions);
 
   await pool.query(
     `UPDATE leads SET extracted = $2, extraction_source = $3 WHERE id = $1`,
     [leadId, JSON.stringify(extracted), source],
   );
+
+  const flags = await step(leadId, "review_gate", async () => {
+    const result = openQuestions({
+      extracted,
+      // The parser is the second opinion. When it *is* the primary extractor
+      // there is no second opinion to have, and comparing it with itself would
+      // manufacture a unanimous agreement that means nothing.
+      alternative:
+        source === "heuristic"
+          ? null
+          : heuristicExtract(lead.raw_text, {
+              referenceDate: lead.received_at,
+              contactHint: lead.contact_hint,
+            }),
+      contactHint: lead.contact_hint,
+      today: localDateISO(lead.received_at, config.businessTimeZone),
+      settled: new Set([
+        ...decisions.map((decision) => decision.field),
+        ...(await autoAcceptedFields()),
+      ]),
+    });
+    return {
+      result,
+      detail: result.length
+        ? `held for review: ${result.map((flag) => `${flag.field} (${flag.reason})`).join(", ")}`
+        : "nothing a person needs to answer",
+    };
+  });
+
+  if (flags.length > 0) {
+    await pool.query(
+      `UPDATE leads SET status = 'needs_review', review_flags = $2 WHERE id = $1`,
+      [leadId, JSON.stringify(flags)],
+    );
+    log.info("lead held for review", {
+      leadId,
+      fields: flags.map((flag) => flag.field),
+    });
+    return;
+  }
+
+  await pool.query(`UPDATE leads SET review_flags = NULL WHERE id = $1`, [leadId]);
 
   const crmPayload = { lead_id: leadId, channel: lead.channel, ...extracted };
   await step(leadId, "deliver_crm", async () => ({

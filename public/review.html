@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review queue — lead intake pipeline</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfaf7;
+        --panel: #ffffff;
+        --ink: #1b1a17;
+        --muted: #6d6a63;
+        --line: #e4e0d8;
+        --accent: #b4562a;
+        --ok: #2f7d4f;
+        --bad: #b23b3b;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161513;
+          --panel: #1f1e1b;
+          --ink: #f0ede6;
+          --muted: #a09b91;
+          --line: #322f2a;
+          --accent: #e0824f;
+          --ok: #6bbf8d;
+          --bad: #e0716f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2.5rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.6 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 0.35rem;
+        letter-spacing: -0.01em;
+      }
+      p.lede {
+        margin: 0 0 2rem;
+        color: var(--muted);
+      }
+      h2 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin: 0 0 0.8rem;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+      }
+      button {
+        padding: 0.6rem 1.1rem;
+        border: 0;
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      ul.queue {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      ul.queue li {
+        border-bottom: 1px solid var(--line);
+        padding: 0.55rem 0;
+      }
+      ul.queue li:last-child {
+        border-bottom: 0;
+      }
+      ul.queue button {
+        background: transparent;
+        color: var(--ink);
+        padding: 0;
+        font-weight: 500;
+        text-align: left;
+        width: 100%;
+      }
+      ul.queue .id {
+        font-family: var(--mono);
+        color: var(--muted);
+        margin-right: 0.6rem;
+      }
+      ul.queue .fields {
+        color: var(--accent);
+        font-size: 0.82rem;
+      }
+      blockquote {
+        margin: 0 0 1.1rem;
+        padding: 0.75rem 0.9rem;
+        border-left: 3px solid var(--line);
+        background: var(--bg);
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+      .field {
+        border-top: 1px solid var(--line);
+        padding: 0.9rem 0;
+      }
+      .field:first-of-type {
+        border-top: 0;
+      }
+      .field .name {
+        font-family: var(--mono);
+        font-weight: 700;
+      }
+      .field .why {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0.15rem 0 0.6rem;
+      }
+      .field input {
+        width: 100%;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--bg);
+        color: var(--ink);
+        font: inherit;
+        font-family: var(--mono);
+        font-size: 0.85rem;
+      }
+      .field .alt {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 0.35rem;
+      }
+      .field label.reject {
+        display: inline-flex;
+        gap: 0.4rem;
+        align-items: center;
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 0.45rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.86rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.4rem 0.5rem 0.4rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      td.num {
+        font-family: var(--mono);
+      }
+      .auto {
+        color: var(--ok);
+        font-weight: 600;
+      }
+      .empty {
+        color: var(--muted);
+      }
+      .hidden {
+        display: none;
+      }
+      footer {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-top: 2rem;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Review queue</h1>
+      <p class="lede">
+        Leads the pipeline would not answer on its own — because the record would have no
+        reply path, because the answer is impossible on its face, or because the two
+        extractors read the text differently. Everything else went straight to the CRM.
+      </p>
+
+      <section class="card">
+        <h2>Waiting for a person</h2>
+        <ul class="queue" id="queue"></ul>
+        <p class="empty hidden" id="queueEmpty">
+          Nothing held. <a href="/">Send an enquiry</a> with no phone number in it to see
+          this fill up.
+        </p>
+      </section>
+
+      <section class="card hidden" id="detail">
+        <h2 id="detailHead"></h2>
+        <blockquote id="raw"></blockquote>
+        <div id="fields"></div>
+        <p style="margin-top: 1rem">
+          <button type="button" id="release">Save and release to the CRM</button>
+        </p>
+        <p class="empty" id="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>Agreement, by field</h2>
+        <p class="empty" id="rules"></p>
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Decided</th>
+              <th>Left alone</th>
+              <th>Rate</th>
+              <th>Asked about</th>
+            </tr>
+          </thead>
+          <tbody id="agreement"></tbody>
+        </table>
+      </section>
+
+      <footer>
+        A decision is stored per field, so re-running the same lead cannot put back a
+        value someone deleted. <a href="/">Back to the demo</a>
+      </footer>
+    </main>
+
+    <script type="module">
+      const $ = (id) => document.getElementById(id);
+
+      // The value a person typed comes back as text; the CRM contract wants the
+      // original types. Only these two fields are not strings, so the rule is
+      // small enough to state rather than infer.
+      const asValue = (field, raw) => {
+        if (raw === "") return null;
+        if (field === "vehicle_count") return Number(raw);
+        return raw;
+      };
+
+      const show = (value) =>
+        value === null || value === undefined ? "" : String(value);
+
+      let current = null;
+
+      async function loadQueue() {
+        const { leads } = await fetch("/v1/review").then((r) => r.json());
+        $("queueEmpty").classList.toggle("hidden", leads.length > 0);
+        $("queue").replaceChildren(
+          ...leads.map((lead) => {
+            const li = document.createElement("li");
+            const button = document.createElement("button");
+            button.type = "button";
+            const id = document.createElement("span");
+            id.className = "id";
+            id.textContent = `#${lead.id}`;
+            const text = document.createElement("span");
+            text.textContent =
+              lead.raw_text.length > 60
+                ? lead.raw_text.slice(0, 60) + "…"
+                : lead.raw_text;
+            const fields = document.createElement("div");
+            fields.className = "fields";
+            fields.textContent = (lead.review_flags ?? [])
+              .map((flag) => flag.field)
+              .join(", ");
+            button.append(id, text, fields);
+            button.onclick = () => openLead(lead.id);
+            li.append(button);
+            return li;
+          }),
+        );
+      }
+
+      async function openLead(id) {
+        const lead = await fetch(`/v1/review/${id}`).then((r) => r.json());
+        current = lead;
+        location.hash = String(id);
+
+        $("detail").classList.remove("hidden");
+        $("detailHead").textContent =
+          `Lead #${lead.id} · ${lead.channel} · parsed by ${lead.extraction_source ?? "unknown"}`;
+        $("raw").textContent = lead.raw_text;
+        $("status").textContent = "";
+
+        $("fields").replaceChildren(
+          ...(lead.review_flags ?? []).map((flag) => {
+            const wrap = document.createElement("div");
+            wrap.className = "field";
+            wrap.dataset.field = flag.field;
+
+            const name = document.createElement("div");
+            name.className = "name";
+            name.textContent = flag.field;
+
+            const why = document.createElement("p");
+            why.className = "why";
+            why.textContent = flag.note;
+
+            const input = document.createElement("input");
+            input.value = show(flag.value);
+            input.placeholder = "leave empty for none";
+            input.dataset.machine = show(flag.value);
+
+            wrap.append(name, why, input);
+
+            if (flag.alternative !== undefined) {
+              const alt = document.createElement("div");
+              alt.className = "alt";
+              const button = document.createElement("button");
+              button.type = "button";
+              button.style.cssText =
+                "background:transparent;color:var(--accent);padding:0;font-size:.82rem";
+              button.textContent = `use the parser's read: ${JSON.stringify(flag.alternative)}`;
+              button.onclick = () => (input.value = show(flag.alternative));
+              alt.append(button);
+              wrap.append(alt);
+            }
+
+            if ((lead.rejectable ?? []).includes(flag.field)) {
+              const label = document.createElement("label");
+              label.className = "reject";
+              const box = document.createElement("input");
+              box.type = "checkbox";
+              box.style.width = "auto";
+              box.dataset.reject = "1";
+              label.append(box, document.createTextNode("wrong — leave it empty"));
+              wrap.append(label);
+            }
+
+            return wrap;
+          }),
+        );
+      }
+
+      async function release() {
+        if (!current) return;
+        const decisions = [...$("fields").querySelectorAll(".field")].map((wrap) => {
+          const field = wrap.dataset.field;
+          const input = wrap.querySelector("input:not([data-reject])");
+          const reject = wrap.querySelector("input[data-reject]");
+          if (reject?.checked) return { field, verdict: "rejected" };
+          // The verdict is derived, not asked: a value left untouched is an
+          // acceptance, and that is exactly what the agreement figures count.
+          if (input.value === input.dataset.machine) {
+            return { field, verdict: "accepted", value: asValue(field, input.value) };
+          }
+          return { field, verdict: "corrected", value: asValue(field, input.value) };
+        });
+
+        $("release").disabled = true;
+        try {
+          const response = await fetch(`/v1/review/${current.id}`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ decisions }),
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            $("status").textContent =
+              body.detail?.[0]?.message ?? body.error ?? "could not save";
+            return;
+          }
+          $("status").textContent = "Saved. Back through the pipeline.";
+          $("detail").classList.add("hidden");
+          current = null;
+          history.replaceState(null, "", location.pathname);
+          await Promise.all([loadQueue(), loadAgreement()]);
+        } finally {
+          $("release").disabled = false;
+        }
+      }
+
+      async function loadAgreement() {
+        const data = await fetch("/v1/review/agreement").then((r) => r.json());
+        $("rules").textContent =
+          `A field stops being asked about after ${data.min_decisions} decisions with agreement at or above ${Math.round(data.threshold * 100)}%.`;
+        $("agreement").replaceChildren(
+          ...data.fields.map((row) => {
+            const tr = document.createElement("tr");
+            const cells = [
+              row.field,
+              String(row.decided),
+              String(row.accepted),
+              row.rate === null ? "—" : `${Math.round(row.rate * 100)}%`,
+              row.auto ? "no longer" : "yes",
+            ];
+            cells.forEach((value, index) => {
+              const td = document.createElement("td");
+              if (index > 0) td.className = "num";
+              if (index === 4 && row.auto) td.className = "auto";
+              td.textContent = value;
+              tr.append(td);
+            });
+            return tr;
+          }),
+        );
+      }
+
+      $("release").addEventListener("click", release);
+
+      await Promise.all([loadQueue(), loadAgreement()]);
+      if (location.hash.length > 1) await openLead(Number(location.hash.slice(1)));
+    </script>
+  </body>
+</html>

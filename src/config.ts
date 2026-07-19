@@ -51,6 +51,14 @@ const Env = z
     OLLAMA_URL: z.url().default("http://localhost:11434"),
     OLLAMA_MODEL: z.string().default("qwen2.5:14b-instruct-q4_K_M"),
 
+    /**
+     * When a field may stop going to a human: it has to have been left alone
+     * this often, over at least this many decisions. Both halves, because a
+     * rate measured on three samples is not a rate. See src/agreement.ts.
+     */
+    REVIEW_AGREEMENT_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),
+    REVIEW_MIN_DECISIONS: z.coerce.number().int().positive().default(20),
+
     BUDGET_CEILING_USD: z.coerce.number().positive().default(5),
     CRM_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
 
@@ -103,6 +111,8 @@ export function loadConfig(raw: NodeJS.ProcessEnv = process.env) {
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     ollamaUrl: env.OLLAMA_URL,
     ollamaModel: env.OLLAMA_MODEL,
+    reviewAgreementThreshold: env.REVIEW_AGREEMENT_THRESHOLD,
+    reviewMinDecisions: env.REVIEW_MIN_DECISIONS,
     budgetCeilingUsd: env.BUDGET_CEILING_USD,
     crmRateLimitPerMin: env.CRM_RATE_LIMIT_PER_MIN,
     crmWebhookUrl: env.CRM_WEBHOOK_URL,

@@ -68,6 +68,55 @@ paths:
               schema: { $ref: "#/components/schemas/Lead" }
         "404": { description: Not found }
 
+  /v1/review:
+    get:
+      summary: Leads held for a person, with what the pipeline could not answer
+      responses:
+        "200": { description: OK }
+
+  /v1/review/agreement:
+    get:
+      summary: How often a person left the extractor's answer alone, per field
+      description: >
+        Also reports which fields have earned their way out of the queue under
+        the configured threshold, and are therefore no longer asked about.
+      responses:
+        "200": { description: OK }
+
+  /v1/review/{id}:
+    get:
+      summary: One held lead — the raw text, the flags, and any prior decisions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+        "404": { description: Not found }
+    post:
+      summary: Record decisions and send the lead back through the pipeline
+      description: >
+        The merged result is validated against ExtractedLead before anything is
+        stored, so a correction cannot put a value into the CRM that the model
+        itself would not have been allowed to return. Fields with no empty value
+        in that schema cannot be rejected — correct them instead.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionInput" }
+      responses:
+        "202": { description: Recorded and re-queued }
+        "400": { description: Malformed, or a value the CRM contract refuses }
+        "404": { description: Not found }
+        "409": { description: This lead is not awaiting review }
+
   /v1/budget:
     get:
       summary: Rolling 24h model spend against the configured ceiling
@@ -156,7 +205,7 @@ components:
         raw_text: { type: string }
         status:
           type: string
-          enum: [queued, processing, done, failed]
+          enum: [queued, processing, needs_review, done, failed]
         extracted:
           oneOf:
             - { $ref: "#/components/schemas/ExtractedLead" }
@@ -166,6 +215,14 @@ components:
           description: >
             `model` when the LLM produced the fields, `heuristic` when the
             deterministic parser did (refusal, truncation, or budget ceiling).
+        review_flags:
+          description: >
+            What the last run could not answer on its own. Null once nothing is
+            outstanding.
+          oneOf:
+            - { type: "null" }
+            - type: array
+              items: { $ref: "#/components/schemas/ReviewFlag" }
         steps:
           type: array
           items:
@@ -175,3 +232,53 @@ components:
               ok: { type: boolean }
               detail: { type: string }
               ms: { type: integer }
+
+    ReviewFlag:
+      type: object
+      required: [field, reason, note]
+      properties:
+        field:
+          type: string
+          enum: [customer_name, contact, service, vehicle_count, requested_date, urgency]
+        reason:
+          type: string
+          enum: [unreachable, unclassified, impossible_date, disagreement]
+        value:
+          description: What the pipeline proposes.
+        alternative:
+          description: What the deterministic parser read, when the two disagreed.
+        note:
+          type: string
+          description: One line, shown to whoever works the queue.
+
+    DecisionInput:
+      type: object
+      required: [decisions]
+      additionalProperties: false
+      properties:
+        decisions:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [field, verdict]
+            properties:
+              field:
+                type: string
+                enum:
+                  [
+                    customer_name,
+                    contact,
+                    service,
+                    vehicle_count,
+                    requested_date,
+                    urgency,
+                  ]
+              verdict:
+                type: string
+                enum: [accepted, corrected, rejected]
+              value:
+                description: >
+                  What stands. Omitted for `rejected`, which is a tombstone: the
+                  field is emptied and stays empty however many times a later
+                  extraction finds the value again.

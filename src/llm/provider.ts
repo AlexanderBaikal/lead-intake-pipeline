@@ -8,9 +8,9 @@ export interface ExtractRequest {
 
 export interface ExtractResult {
   lead: ExtractedLead;
-  /** `model` when the LLM produced it, `heuristic` when the rules did. */
+  /** `model` when the LLM produced it, `heuristic` when the fallback did. */
   source: "model" | "heuristic";
-  /** The model that ran, or null when nothing billable did. */
+  /** The priced model, or null when nothing billable ran. */
   model: string | null;
   inputTokens: number;
   outputTokens: number;

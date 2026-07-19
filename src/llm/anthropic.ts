@@ -45,7 +45,11 @@ export class AnthropicProvider implements LlmProvider {
   readonly metered = true;
   readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
 
-  private readonly client = new Anthropic({ apiKey: config.anthropicApiKey });
+  private readonly client: Anthropic;
+
+  constructor(client: Anthropic = new Anthropic({ apiKey: config.anthropicApiKey })) {
+    this.client = client;
+  }
 
   async estimateInputTokens(request: ExtractRequest): Promise<number> {
     const counted = await this.client.messages.countTokens({
@@ -77,7 +81,7 @@ export class AnthropicProvider implements LlmProvider {
 
     // Two ways a structurally-valid request still yields no usable object:
     // the model declined, or it hit the token cap mid-object. Neither is worth
-    // failing the lead over — parse it with the rules and mark the row.
+    // failing the lead over — parse it locally and mark the row accordingly.
     if (response.stop_reason === "refusal" || response.parsed_output === null) {
       return {
         lead: heuristicExtract(request.text, {

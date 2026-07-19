@@ -83,8 +83,26 @@ async function extract(lead: LeadRow): Promise<Extraction> {
   }
 
   const result = await provider.extract(request);
+
+  // Billing keys off `metered`, not off whether a model ran. A local model
+  // names itself and still costs nothing; reading `model` as "this was
+  // billable" would either bill it against a price that does not exist or
+  // report a real extraction to the operator as "parsed locally".
+  if (!provider.metered) {
+    return {
+      extracted: result.lead,
+      source: result.source,
+      detail: result.model
+        ? `${result.source} · ${result.model} · no cost`
+        : "parsed locally",
+    };
+  }
+
+  // A metered provider that reports no model leaves the ledger with nothing to
+  // record, which is how a call becomes free by accident. Same reasoning as the
+  // unpriced-model throw in src/pricing.ts.
   if (!result.model) {
-    return { extracted: result.lead, source: result.source, detail: "parsed locally" };
+    throw new Error(`metered provider "${provider.name}" returned no model to bill`);
   }
 
   const cost = await recordCall({

@@ -35,9 +35,21 @@ const Env = z
       .refine(isTimeZone, "not a known IANA time zone")
       .default("America/Panama"),
 
-    LLM_PROVIDER: z.enum(["mock", "anthropic"]).default("mock"),
+    LLM_PROVIDER: z.enum(["mock", "anthropic", "ollama"]).default("mock"),
     LLM_MODEL: z.string().default("claude-opus-5"),
     ANTHROPIC_API_KEY: z.string().optional(),
+
+    /**
+     * A model on your own machine. Nothing is billed, so nothing here is
+     * checked against src/pricing.ts — but two things this file cannot catch
+     * still fail on the first lead: a model Ollama has not pulled, and one
+     * whose build cannot do schema-constrained output at all. `gemma3:12b-it-qat`
+     * is the second kind: it answers fine untyped and returns HTTP 500
+     * "failed to load model vocabulary required for format" the moment a
+     * schema is attached. The default below is one that was checked.
+     */
+    OLLAMA_URL: z.url().default("http://localhost:11434"),
+    OLLAMA_MODEL: z.string().default("qwen2.5:14b-instruct-q4_K_M"),
 
     BUDGET_CEILING_USD: z.coerce.number().positive().default(5),
     CRM_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
@@ -89,6 +101,8 @@ export function loadConfig(raw: NodeJS.ProcessEnv = process.env) {
     llmProvider: env.LLM_PROVIDER,
     llmModel: env.LLM_MODEL,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
+    ollamaUrl: env.OLLAMA_URL,
+    ollamaModel: env.OLLAMA_MODEL,
     budgetCeilingUsd: env.BUDGET_CEILING_USD,
     crmRateLimitPerMin: env.CRM_RATE_LIMIT_PER_MIN,
     crmWebhookUrl: env.CRM_WEBHOOK_URL,

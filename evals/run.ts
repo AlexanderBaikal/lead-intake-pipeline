@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { config } from "../src/config.js";
 import { getProvider } from "../src/llm/index.js";
 import type { ExtractedLead } from "../src/schema.js";
 
@@ -101,9 +100,7 @@ for (const [field, stat] of [...perField].sort()) {
   console.log(`  ${field.padEnd(16)} ${stat.hit}/${stat.total}`);
 }
 
-console.log(
-  `\nprovider=${provider.name} model=${provider.metered ? config.llmModel : "-"}`,
-);
+console.log(`\nprovider=${provider.name} model=${provider.model ?? "-"}`);
 console.log(
   `accuracy ${correct}/${scored} = ${(accuracy * 100).toFixed(1)}% (threshold ${(OVERALL_THRESHOLD * 100).toFixed(0)}%)`,
 );

@@ -3,8 +3,8 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { config } from "../config.js";
 import { ExtractedLead } from "../schema.js";
-import { localDateISO } from "../time.js";
 import { heuristicExtract } from "./heuristic.js";
+import { SYSTEM, userPrompt } from "./prompt.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
 /**
@@ -14,35 +14,10 @@ import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
  */
 const MAX_OUTPUT_TOKENS = 1_024;
 
-const SYSTEM = [
-  "You normalize inbound service enquiries for a vehicle-care business in Panama.",
-  "Enquiries arrive as free text, in Spanish or English, often mixed, misspelled, or truncated.",
-  "Extract only what the text actually says. Leave a field null rather than guessing it:",
-  "an unfilled field costs a human ten seconds, an invented one costs a wrong appointment.",
-  "Resolve relative dates ('mañana', 'next Friday') against the reference date given in the message.",
-].join(" ");
-
-/**
- * The prompt is assembled stable-part-first so the system block and the
- * instructions stay byte-identical across leads. Only the tail varies, which
- * is what makes the cached prefix reusable at ~0.1x input price.
- */
-function userPrompt(request: ExtractRequest): string {
-  // The business calendar day, not the UTC one — see src/time.ts.
-  const reference = localDateISO(request.referenceDate, config.businessTimeZone);
-  return [
-    `Reference date (today, ${config.businessTimeZone}): ${reference}`,
-    request.contactHint ? `Contact known from the channel: ${request.contactHint}` : null,
-    "Enquiry:",
-    request.text,
-  ]
-    .filter((line): line is string => line !== null)
-    .join("\n");
-}
-
 export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
   readonly metered = true;
+  readonly model = config.llmModel;
   readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
 
   private readonly client: Anthropic;

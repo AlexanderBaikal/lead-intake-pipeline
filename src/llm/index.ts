@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { heuristicExtract } from "./heuristic.js";
+import { OllamaProvider } from "./ollama.js";
 import type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 
 export type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
@@ -12,6 +13,7 @@ export type { ExtractRequest, ExtractResult, LlmProvider } from "./provider.js";
 class MockProvider implements LlmProvider {
   readonly name = "mock";
   readonly metered = false;
+  readonly model = null;
   readonly maxOutputTokens = 0;
 
   async estimateInputTokens(request: ExtractRequest): Promise<number> {
@@ -35,8 +37,23 @@ class MockProvider implements LlmProvider {
 
 let cached: LlmProvider | null = null;
 
+/**
+ * The one place a provider name becomes an implementation. The switch is
+ * exhaustive over the config enum, so adding a provider fails to compile until
+ * it is wired here rather than falling through to the offline parser.
+ */
+function create(): LlmProvider {
+  switch (config.llmProvider) {
+    case "anthropic":
+      return new AnthropicProvider();
+    case "ollama":
+      return new OllamaProvider();
+    case "mock":
+      return new MockProvider();
+  }
+}
+
 export function getProvider(): LlmProvider {
-  cached ??=
-    config.llmProvider === "anthropic" ? new AnthropicProvider() : new MockProvider();
+  cached ??= create();
   return cached;
 }

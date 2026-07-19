@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 import { pool } from "./db.js";
 import { log } from "./logger.js";

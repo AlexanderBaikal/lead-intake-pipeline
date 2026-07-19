@@ -1,8 +1,12 @@
 {
   "name": "lead-intake-pipeline",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Turns messy inbound enquiries into structured CRM records. Queue, idempotency, LLM extraction with a deterministic fallback, and a hard cost ceiling.",
   "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",

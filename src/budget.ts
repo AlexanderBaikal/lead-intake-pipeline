@@ -28,6 +28,12 @@ export async function currentSpend(): Promise<BudgetState> {
  * Gate a call *before* it happens, using the counted input tokens plus the
  * worst case output (max_tokens). Checking afterwards would only tell us how
  * far over we already are.
+ *
+ * The read and the spend are not atomic across processes: N workers can each
+ * clear the gate on the same remaining balance and then all spend. The
+ * overshoot is bounded by N x the worst-case call and self-corrects on the
+ * next check, which is the trade this design accepts rather than serializing
+ * every extraction behind one lock. See "Limits" in the README.
  */
 export async function canAfford(
   model: string,

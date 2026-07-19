@@ -155,6 +155,37 @@ DATABASE_URL=...  npm start      # web
 DATABASE_URL=...  npm run worker # one or more
 ```
 
+## Limits
+
+- One queue, no priority lanes. A 500-lead import will sit in front of a
+  walk-in enquiry. The fix is a priority column in the claim query's
+  `ORDER BY`.
+- Dead jobs stop where they land. `status='dead'` after five attempts and
+  nobody gets paged. In production they'd need to go somewhere a human looks.
+- Both ceilings are per-process, and workers scale horizontally. The token
+  bucket is in memory, so N workers pace at N x 60 writes/min rather than 60.
+  The budget gate reads the ledger and spends with no lock in between, so N
+  workers can all clear the same remaining balance and go over it. One worker
+  is fine. Past that, both of these want shared state: a `rate_limits` row
+  taken with `FOR UPDATE`, or Redis if there's already one around.
+- The budget ceiling is per-deployment, not per-tenant, so one noisy customer
+  can spend someone else's allowance.
+- Extraction is single-pass. No confidence score and no second opinion on a
+  message with little to go on. If the stakes were higher I'd extract, then
+  have a cheaper model check the extraction against the original text and flag
+  the disagreements.
+- `vehicle_types` is a free-text array. It should be an enum. It isn't yet
+  because the real taxonomy depends on which CRM you attach.
+
+## At a hundred times the volume
+
+The queue goes first. `SKIP LOCKED` polling is fine into the low thousands per
+minute, after which the wasted round trips start to add up, so `LISTEN/NOTIFY`
+to wake the workers, or a real broker. Extraction would move to the Batch API
+for anything that isn't user-facing, at half the price. The ledger would want a
+rollup table instead of summing a day of rows on every call. At the volume this
+was built for, none of that is worth doing.
+
 ## Stack
 
 TypeScript, Node 22, Express, Postgres (nothing else), the Anthropic SDK with

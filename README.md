@@ -40,8 +40,8 @@ npm run worker                # in a second terminal
 ```
 
 Open <http://localhost:3210>, send an enquiry and watch the steps resolve. Send
-one with no phone number in it and it stops for a person instead — answer it at
-<http://localhost:3210/review.html>. To use a real model, set
+one with no phone number in it and it stops for a person instead; you answer it
+at <http://localhost:3210/review.html>. To use a real model, set
 `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
 
 ```bash
@@ -117,11 +117,11 @@ Some leads can't be finished automatically. Three cases get held:
 If a model produced the fields, the deterministic parser reads the same text as
 a second opinion. Where the two disagree on service, urgency, date or vehicle
 count, the lead is held as well. Disagreements about the customer's name are
-ignored — the parser misses names constantly and it doesn't change where the
-lead goes.
+ignored, since the parser misses names constantly and the name doesn't change
+where the lead goes.
 
-The model is never asked how confident it is. It reports confidence in the
-cases where it's wrong, so the number doesn't help.
+The model is never asked how confident it is. It sounds just as sure when it's
+wrong, so the number doesn't help.
 
 A held lead stops before delivery, not after it. Nothing is written to
 `deliveries` until someone answers. The queue is at `/review.html`.
@@ -130,11 +130,11 @@ A held lead stops before delivery, not after it. Nothing is written to
 
 Every decision is stored per field in `review_decisions`, including rejections.
 
-That matters the next time the same lead is processed — a retry, or a re-run
-after the text was updated. Extraction finds the same value it found before,
-and with nothing recorded it would go straight back into the record. Decisions
-are merged on top of whatever extraction just produced, so a rejected field
-comes out empty every time. There's a test for exactly that: reject the
+That matters the next time the same lead is processed, whether that's a retry
+or a re-run after the text was updated. Extraction finds the same value it found
+before, and with nothing recorded it would go straight back into the record.
+Decisions are merged on top of whatever extraction just produced, so a rejected
+field comes out empty every time. There's a test for exactly that: reject the
 contact, add a phone number to the text, re-run, the field stays empty.
 
 Corrections go through the same schema the model's output does, so typing `0`
@@ -151,8 +151,9 @@ and a person either kept it or didn't. `/v1/review/agreement` reports, per
 field, how often it was kept.
 
 Once a field has been kept 95% of the time over at least 20 decisions, it stops
-being held. Both numbers are configurable and both are needed — three lucky
-calls in a row aren't evidence. Fields people keep correcting keep coming back.
+being held. Both numbers are configurable, and the second one is what stops
+three lucky calls in a row from switching a field off. Fields people keep
+correcting keep coming back.
 
 ## Worth a look
 

@@ -52,9 +52,8 @@ const Env = z
     OLLAMA_MODEL: z.string().default("qwen2.5:14b-instruct-q4_K_M"),
 
     /**
-     * When a field may stop going to a human: it has to have been left alone
-     * this often, over at least this many decisions. Both halves, because a
-     * rate measured on three samples is not a rate. See src/agreement.ts.
+     * When a field may stop going to a human: left alone at least this often,
+     * over at least this many decisions. See src/agreement.ts.
      */
     REVIEW_AGREEMENT_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),
     REVIEW_MIN_DECISIONS: z.coerce.number().int().positive().default(20),

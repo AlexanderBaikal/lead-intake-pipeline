@@ -6,22 +6,20 @@ import { ExtractedLead } from "./schema.js";
 /**
  * The human-in-the-loop layer.
  *
- * The pipeline's job is to decide, per lead, whether it is allowed to answer on
- * its own. When it is not, the lead stops before the CRM and waits for a person
- * — and what that person decides is stored so the next run of the same lead
- * cannot undo it.
+ * Decides, per lead, whether the pipeline is allowed to answer on its own. If
+ * it isn't, the lead stops before the CRM and waits for a person, and what that
+ * person decides is stored so the next run can't undo it.
  *
- * Nothing here asks the model how confident it is. Self-reported confidence is
- * the model's opinion of its own work, and it is wrong in exactly the cases
- * that matter. The two signals used instead are checkable: the answer is
- * impossible on its face, or the two extractors that already exist in this repo
- * disagree with each other.
+ * Nothing here asks the model how confident it is. Self-reported confidence
+ * tends to run highest on exactly the cases that are wrong. The two signals
+ * used instead can both be checked: either the answer is impossible on its
+ * face, or the two extractors already in this repo disagree.
  */
 
 /**
- * Fields a person can be asked about. Deliberately short. `notes`, `language`
- * and `vehicle_types` never change what happens to a lead, and a queue that
- * asks about everything is a queue nobody works.
+ * Fields a person can be asked about. Kept short on purpose: `notes`,
+ * `language` and `vehicle_types` don't change what happens to a lead, and a
+ * queue that asks about everything stops getting worked.
  */
 export const REVIEWABLE_FIELDS = [
   "customer_name",
@@ -35,8 +33,9 @@ export type ReviewableField = (typeof REVIEWABLE_FIELDS)[number];
 
 /**
  * Only nullable fields can be rejected outright. `service`, `urgency` and
- * `vehicle_count` have no empty value in the CRM contract, so "this is wrong"
- * has to be a correction there — the schema decides this, not a house rule.
+ * `vehicle_count` have no empty value in the CRM contract, so on those "this is
+ * wrong" has to come with a replacement. The schema is what decides that, not a
+ * rule written down here.
  */
 export const REJECTABLE_FIELDS: readonly ReviewableField[] = [
   "customer_name",
@@ -45,9 +44,9 @@ export const REJECTABLE_FIELDS: readonly ReviewableField[] = [
 ];
 
 /**
- * Where a disagreement between extractors is worth a person's time. A name the
- * parser missed is not news; a service or a date the two read differently sends
- * the lead somewhere else in the CRM.
+ * Where a disagreement between extractors is worth a person's time. The parser
+ * drops customer names constantly, so that tells us nothing, but a service or a
+ * date the two read differently sends the lead somewhere else in the CRM.
  */
 const DISAGREEMENT_FIELDS: readonly ReviewableField[] = [
   "service",
@@ -82,9 +81,9 @@ export interface OpenQuestionsInput {
 }
 
 /**
- * What the pipeline cannot answer on its own. Pure: the same inputs give the
- * same flags, which is what makes the queue explainable to the person working
- * it and testable without a database.
+ * What the pipeline can't answer on its own. No I/O in here, so the same inputs
+ * always give the same flags: the queue can be explained to whoever works it,
+ * and tested without a database.
  */
 export function openQuestions(input: OpenQuestionsInput): Flag[] {
   const { extracted, alternative, contactHint, today, settled } = input;
@@ -101,7 +100,7 @@ export function openQuestions(input: OpenQuestionsInput): Flag[] {
       field: "contact",
       reason: "unreachable",
       value: null,
-      note: "no phone or email anywhere in the enquiry — the CRM record would have no reply path",
+      note: "no phone or email anywhere in the enquiry, so the CRM record would have no reply path",
     });
   }
 
@@ -154,8 +153,8 @@ export interface Decision {
 /**
  * Applies what people decided over whatever the extractor just produced.
  *
- * Order matters and is the whole point: the fresh extraction goes down first,
- * the human decisions on top. A rejected field lands as null however many times
+ * The order is the important bit: the fresh extraction goes down first, the
+ * human decisions on top. A rejected field comes out null however many times
  * the machine finds the value again.
  */
 export function mergeDecisions(
@@ -208,33 +207,41 @@ export async function decisionsFor(leadId: number): Promise<DecisionRow[]> {
 }
 
 /**
- * Records the decisions. Upsert rather than insert: a second pass over the same
- * lead corrects the first person's call instead of leaving two rows that
- * disagree, and the agreement figures stay countable.
+ * Records the decisions. Upsert, so a second pass over the same lead corrects
+ * the first person's call instead of leaving two rows that disagree.
+ *
+ * `machine_value` is written once and never updated. It is what the extractor
+ * proposed the first time anyone looked, and it is the column the agreement
+ * figures are counted against; overwriting it on a second pass would score the
+ * machine against a value a human had already put there.
+ *
+ * One statement rather than a query per field, so a submission cannot land
+ * half-applied and leave the lead holding decisions nobody made.
  */
 export async function saveDecisions(
   leadId: number,
   decisions: readonly Decision[],
   machineValues: Readonly<Record<string, unknown>>,
 ): Promise<void> {
-  for (const decision of decisions) {
-    await pool.query(
-      `INSERT INTO review_decisions (lead_id, field, verdict, machine_value, value)
-            VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (lead_id, field) DO UPDATE
-              SET verdict = EXCLUDED.verdict,
-                  machine_value = EXCLUDED.machine_value,
-                  value = EXCLUDED.value,
-                  decided_at = now()`,
-      [
-        leadId,
-        decision.field,
-        decision.verdict,
-        JSON.stringify(machineValues[decision.field] ?? null),
+  await pool.query(
+    `INSERT INTO review_decisions (lead_id, field, verdict, machine_value, value)
+     SELECT $1, field, verdict, machine_value::jsonb, value::jsonb
+       FROM unnest($2::text[], $3::text[], $4::text[], $5::text[])
+              AS submitted(field, verdict, machine_value, value)
+     ON CONFLICT (lead_id, field) DO UPDATE
+            SET verdict = EXCLUDED.verdict,
+                value = EXCLUDED.value,
+                decided_at = now()`,
+    [
+      leadId,
+      decisions.map((decision) => decision.field),
+      decisions.map((decision) => decision.verdict),
+      decisions.map((decision) => JSON.stringify(machineValues[decision.field] ?? null)),
+      decisions.map((decision) =>
         JSON.stringify(decision.verdict === "rejected" ? null : (decision.value ?? null)),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
 
 export interface PendingLead {

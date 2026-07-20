@@ -67,14 +67,14 @@ CREATE INDEX IF NOT EXISTS llm_calls_created_idx ON llm_calls (created_at);
 
 -- What a person ruled on, one row per (lead, field).
 --
--- `machine_value` is kept beside `value` because the two together are the only
--- honest way to measure the extractor: agreement is how often a human left the
--- machine's answer alone, and that question cannot be asked of a table that
--- overwrote the machine's answer with the human's.
+-- `machine_value` sits beside `value` so the extractor stays measurable:
+-- agreement is how often a human left the machine's answer alone, which can't
+-- be counted from a table that overwrote it with the human's. Writes keep the
+-- original on conflict for that reason.
 --
 -- A 'rejected' row is a tombstone. Without it, re-processing a lead would put
--- back the value a person deleted — the machine finds it again every time, and
--- deletion that does not survive the next run is not deletion.
+-- back the value a person deleted, because the machine finds it again on every
+-- run.
 CREATE TABLE IF NOT EXISTS review_decisions (
   id            bigserial PRIMARY KEY,
   lead_id       bigint      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,

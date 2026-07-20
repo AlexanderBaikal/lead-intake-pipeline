@@ -163,8 +163,7 @@ app.post("/v1/review/:id", async (req, res) => {
   }
 
   // A correction typed by a person goes through the same contract the model's
-  // output does. Refusing it here is the difference between a bad value being
-  // caught by us and being caught by the CRM.
+  // output does, so a bad value is refused here rather than by the CRM.
   const merged = checkMerged(mergeDecisions(detail.extracted, parsed.data.decisions));
   if (!merged.success) {
     res.status(400).json({ error: "invalid_value", detail: merged.error.issues });
@@ -173,9 +172,18 @@ app.post("/v1/review/:id", async (req, res) => {
 
   await saveDecisions(id, parsed.data.decisions, detail.extracted);
 
-  // Back through the pipeline rather than delivered from here: the gate runs
+  // The lead stops awaiting a person here, not when a worker gets to it. Left
+  // on `needs_review` until then, it sat in the very queue this request just
+  // answered: whoever released it watched it stay listed, and a second click
+  // came back 409. The re-run knows it by its decisions, not by this status.
+  await pool.query(
+    `UPDATE leads SET status = 'queued', review_flags = NULL WHERE id = $1`,
+    [id],
+  );
+
+  // Back through the pipeline rather than delivered from here. The gate runs
   // again with these decisions settled, so a field the person left open still
-  // holds the lead, and there stays exactly one path to the CRM.
+  // holds the lead, and there is only one path to the CRM.
   await enqueue(id);
 
   res.status(202).json({ id, status: "queued", extracted: merged.data });

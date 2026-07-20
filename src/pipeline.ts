@@ -139,7 +139,12 @@ export async function processLead(leadId: number): Promise<void> {
 
   // A lead coming back from review has already been extracted. Re-running the
   // model would spend money to produce the same answer a person just ruled on.
-  const returning = lead.status === "needs_review" && lead.extracted !== null;
+  //
+  // Recognised by the decisions on file rather than by the status still saying
+  // `needs_review`: releasing clears that status the moment the person is done
+  // with the lead, so the queue does not keep offering work nobody owes.
+  const decisions = await decisionsFor(leadId);
+  const returning = decisions.length > 0 && lead.extracted !== null;
 
   const { extracted: machine, source } = returning
     ? { extracted: lead.extracted!, source: lead.extraction_source ?? "unknown" }
@@ -148,10 +153,9 @@ export async function processLead(leadId: number): Promise<void> {
         return { result: outcome, detail: outcome.detail };
       });
 
-  // Human decisions go on top of whatever the extractor produced — including a
-  // fresh extraction on a re-run, which is the case that makes the tombstones
-  // in `review_decisions` load bearing rather than decorative.
-  const decisions = await decisionsFor(leadId);
+  // Human decisions go on top of whatever the extractor produced, including a
+  // fresh extraction on a re-run. That re-run is the reason rejections are
+  // stored as rows instead of just blanking the field.
   const extracted = mergeDecisions(machine, decisions);
 
   await pool.query(
@@ -162,9 +166,9 @@ export async function processLead(leadId: number): Promise<void> {
   const flags = await step(leadId, "review_gate", async () => {
     const result = openQuestions({
       extracted,
-      // The parser is the second opinion. When it *is* the primary extractor
-      // there is no second opinion to have, and comparing it with itself would
-      // manufacture a unanimous agreement that means nothing.
+      // The parser is the second opinion. When it is also the primary
+      // extractor there is nothing to compare against, and comparing it with
+      // itself would agree every time.
       alternative:
         source === "heuristic"
           ? null

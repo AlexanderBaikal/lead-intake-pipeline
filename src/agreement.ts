@@ -5,15 +5,14 @@ import { REVIEWABLE_FIELDS, type ReviewableField } from "./review.js";
 /**
  * How often a person left the extractor's answer alone.
  *
- * Every review produces a labelled example for free — the machine proposed
- * something, a human either kept it or did not — so the queue pays for itself
- * twice: once by catching the bad record, and again by measuring the extractor
- * on real traffic instead of on a fixture set someone wrote by hand.
+ * Every review produces a labelled example for free: the machine proposed
+ * something and a human either kept it or didn't. So the queue catches the bad
+ * record and, on the way, measures the extractor against real traffic rather
+ * than against a fixture set written by hand.
  *
- * The measurement is then spent: a field that has been right often enough, over
- * enough decisions, stops being asked about. That is the only mechanism here
- * that reduces manual work, and it is deliberately the one with a number
- * attached rather than a feeling.
+ * The measurement then gets spent. A field that has been right often enough,
+ * over enough decisions, stops being asked about, and that is the only thing
+ * here that reduces the manual work over time.
  */
 
 export interface FieldAgreement {
@@ -22,7 +21,7 @@ export interface FieldAgreement {
   decided: number;
   /** Of those, how many kept the machine's value. */
   accepted: number;
-  /** null until anything has been decided — an unmeasured field is not a perfect one. */
+  /** null until something has been decided, so an unmeasured field reads as unmeasured. */
   rate: number | null;
   /** Whether this field currently skips review. */
   auto: boolean;
@@ -34,10 +33,10 @@ export interface PromotionRules {
 }
 
 /**
- * Pure: given counts, which fields have earned their way out of the queue.
+ * Given the counts, which fields have earned their way out of the queue.
  *
- * `minDecisions` is what stops three lucky calls in a row from switching a field
- * off. Both halves have to hold — a rate on two samples is not a rate.
+ * `minDecisions` is what stops three lucky calls in a row from switching a
+ * field off; both halves have to hold before anything is promoted.
  */
 export function promote(
   counts: ReadonlyArray<{ field: ReviewableField; decided: number; accepted: number }>,

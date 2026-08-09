@@ -28,7 +28,8 @@ export function deriveKey(input: LeadInput): string {
 }
 
 export type ResolvedKey =
-  { ok: true; key: string } | { ok: false; error: "invalid_idempotency_key" };
+  | { ok: true; key: string }
+  | { ok: false; error: "invalid_idempotency_key" };
 
 /**
  * Body field first, then the header, then the derived key.

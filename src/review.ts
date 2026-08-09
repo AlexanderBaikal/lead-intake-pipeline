@@ -56,7 +56,10 @@ const DISAGREEMENT_FIELDS: readonly ReviewableField[] = [
 ];
 
 export type FlagReason =
-  "unreachable" | "unclassified" | "impossible_date" | "disagreement";
+  | "unreachable"
+  | "unclassified"
+  | "impossible_date"
+  | "disagreement";
 
 export interface Flag {
   field: ReviewableField;

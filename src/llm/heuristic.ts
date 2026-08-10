@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import type { ExtractedLead } from "../schema.js";
+import type { ExtractedLead, VehicleType } from "../schema.js";
 import { localCalendarDay } from "../time.js";
 
 /**
@@ -41,8 +41,13 @@ const NEGATION_FOLLOWS = /^[\s,]*(?:no|nope|not)\b/i;
 /**
  * The nouns a vehicle can be called, grouped by the type they resolve to.
  * Plurals are explicit: `\bcamioneta\b` does not match "camionetas".
+ *
+ * The types are `VehicleType`, which is the same list the system prompt hands
+ * the model — a label spelt any other way here is a compile error rather than
+ * a CRM holding both `pickup` and `pickup truck` depending on which extractor
+ * ran that day.
  */
-const VEHICLE_NOUNS: ReadonlyArray<[string, string]> = [
+const VEHICLE_NOUNS: ReadonlyArray<[string, VehicleType]> = [
   ["pickups?|pick-?ups?|camionetas?|trucks?", "pickup"],
   ["suvs?|4x4|jeeps?", "suv"],
   ["sedan(?:es|s)?|sed[aá]n|carros?|coches?|autos?|cars?", "sedan"],
@@ -50,7 +55,7 @@ const VEHICLE_NOUNS: ReadonlyArray<[string, string]> = [
   ["motos?|motorcycles?|bikes?", "motorcycle"],
 ];
 
-const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, string]> = VEHICLE_NOUNS.map(
+const VEHICLE_PATTERNS: ReadonlyArray<[RegExp, VehicleType]> = VEHICLE_NOUNS.map(
   ([nouns, type]) => [new RegExp(`\\b(?:${nouns})\\b`, "i"), type],
 );
 
@@ -218,7 +223,7 @@ export function heuristicExtract(
     break;
   }
 
-  const vehicleTypes: string[] = [];
+  const vehicleTypes: VehicleType[] = [];
   for (const [re, label] of VEHICLE_PATTERNS) {
     if (re.test(text) && !vehicleTypes.includes(label)) vehicleTypes.push(label);
   }

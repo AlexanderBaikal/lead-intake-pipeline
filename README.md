@@ -43,7 +43,7 @@ one with no phone number and it stops for a person instead; answer it at
 `/review.html`.
 
 ```bash
-npm test        # 74 unit tests, no database needed
+npm test        # 76 unit tests, no database needed
 npm run eval    # 20 saved enquiries scored field by field
 npm run typecheck
 ```
@@ -175,8 +175,9 @@ DATABASE_URL=... npm run worker # one or more
 - The budget ceiling is per-deployment, not per-tenant.
 - Extraction is single-pass, no second opinion. Higher stakes would want a
   cheaper model checking the extraction against the original text.
-- `vehicle_types` is free text. It should be an enum, but the taxonomy depends
-  on which CRM you attach.
+- `vehicle_types` is free text. The vocabulary is stated in the prompt and typed
+  in the parser, so both extractors answer in the same words, but the schema
+  does not enforce it — which taxonomy to hold is the CRM's business.
 
 At a hundred times the volume the queue goes first: `SKIP LOCKED` polling is
 fine into the low thousands per minute, after which `LISTEN/NOTIFY` or a real

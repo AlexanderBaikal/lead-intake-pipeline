@@ -186,12 +186,21 @@ components:
         vehicle_types:
           type: array
           items: { type: string }
+          description: >-
+            The distinct types named in the enquiry. Free text, so a different
+            CRM can carry its own taxonomy, but both extractors answer in this
+            vocabulary: pickup, suv, sedan, van, motorcycle.
         requested_date:
           type: [string, "null"]
           pattern: "^\\d{4}-\\d{2}-\\d{2}$"
         urgency:
           type: string
           enum: [asap, today, this_week, flexible]
+          description: >-
+            How urgently the customer asked, not how near the day they named.
+            First that applies: asap when the enquiry says it is urgent, today
+            when it names the day it arrived, this_week when it names any other
+            day inside the coming week, flexible otherwise.
         language:
           type: string
           enum: [es, en, other]
